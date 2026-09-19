@@ -44,17 +44,25 @@ $ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
 注意点が 1 つあります。TypeSafe は英語の精度が最も高いと明記しており、手元の実測でも日本語の意味は
 閾値付近でややぶれます。際どい問い合わせは英語で書く方が安定します。
 
-## セットアップ
+## インストール
 
-1. [TypeSafe のコンソール](https://console.typesafe.ai/) で API キーを取得する
-2. `semgrep` と同じディレクトリに `.env` を置く
+必要なものは Node.js 23.6 以降（`node --version` で確認）と、
+[TypeSafe のコンソール](https://console.typesafe.ai/) で取得した API キーだけです。`npm install` は不要です。
 
-   ```
-   TYPESAFE_API_KEY=your-key
-   ```
+```sh
+git clone https://github.com/uehaj/jev-semgrep.git
+cd jev-semgrep
+echo 'TYPESAFE_API_KEY=your-key' > .env
+chmod +x semgrep
+ln -s "$PWD/semgrep" ~/.local/bin/semgrep    # PATH の通った任意のディレクトリでよい
+semgrep --help
+```
 
-   `SEMGREP_ENV=/path/to/.env` で場所を変えられます。`export TYPESAFE_API_KEY=...` でも構いません。
-3. `chmod +x semgrep` して PATH の通った場所にシンボリックリンクを張る
+ラッパーはシンボリックリンクの先のディレクトリにある `.env` を読むので、どこから呼んでも動きます。
+キーを別の場所に置くなら `SEMGREP_ENV=/path/to/.env`、または `TYPESAFE_API_KEY` を export して `.env` を省いても構いません。
+`.env` は git 管理外です。
+
+更新は `git -C /path/to/jev-semgrep pull` です。
 
 > 静的解析ツールの [Semgrep](https://semgrep.dev/) と同名です。両方使うならどちらかを別名にしてください。
 

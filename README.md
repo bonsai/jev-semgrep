@@ -46,17 +46,25 @@ query in different languages. One caveat: TypeSafe documents English as the most
 and in our tests Japanese meanings wobble a little more near the threshold. When a query is borderline,
 phrasing the meaning in English is the safer choice.
 
-## Setup
+## Install
 
-1. Get an API key from the [TypeSafe console](https://console.typesafe.ai/).
-2. Put it in `.env` next to `semgrep`:
+Requirements: Node.js 23.6 or later (`node --version`) and a TypeSafe API key from the
+[TypeSafe console](https://console.typesafe.ai/). Nothing to `npm install`.
 
-   ```
-   TYPESAFE_API_KEY=your-key
-   ```
+```sh
+git clone https://github.com/uehaj/jev-semgrep.git
+cd jev-semgrep
+echo 'TYPESAFE_API_KEY=your-key' > .env
+chmod +x semgrep
+ln -s "$PWD/semgrep" ~/.local/bin/semgrep    # or any directory on your PATH
+semgrep --help
+```
 
-   `SEMGREP_ENV=/path/to/.env` points elsewhere, or just `export TYPESAFE_API_KEY=...`.
-3. `chmod +x semgrep` and symlink it somewhere on your PATH.
+The wrapper reads `.env` from the directory the symlink points to, so it works from anywhere.
+To keep the key elsewhere, set `SEMGREP_ENV=/path/to/.env`, or export `TYPESAFE_API_KEY` and skip `.env`.
+`.env` is git-ignored.
+
+To update: `git -C /path/to/jev-semgrep pull`.
 
 > The name collides with the static-analysis tool [Semgrep](https://semgrep.dev/). Rename one of them if you use both.
 
