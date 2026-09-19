@@ -1,0 +1,79 @@
+# Changelog
+
+All notable changes to `@uehaj/semgrep`. The format follows [Keep a Changelog](https://keepachangelog.com/),
+versions follow [Semantic Versioning](https://semver.org/) (until 1.0, option changes bump minor).
+
+## [Unreleased]
+
+### Changed
+- README: install section now presents the two ways to use it (command-line tool, Claude Code skill),
+  and notes that the skill falls back to `npx` so no install is needed for skill-only use.
+- README: "Use it from Claude Code" section for the `/uehaj:semgrep` skill (`uehaj/skills` marketplace),
+  including single-skill install via the skills CLI.
+- README: cross-lingual section now shows French, Russian, German, Spanish, Chinese and Korean, not just Japanese and English.
+- Source comments translated to English.
+- Added `RELEASING.md` and `scripts/release.sh` (`npm run release <bump>`).
+
+### Added
+- `tests/multi.txt`, `tests/fairy*.txt`, `tests/guild*.txt` corpora.
+
+## [0.2.1] - 2026-09-19 (tagged, not published to npm)
+
+### Fixed
+- `tests/judge.mts` no longer depends on `-T 1.01`, which the new range check rejects.
+- `-c` prints `0` for files without a match, like grep.
+- `-r` prefixes file names even when only one file is searched, like `grep -r`.
+- Unreadable files are reported and skipped; the rest of the input is still searched; exit code is 2.
+- Empty meanings (`-e ''`) are rejected.
+- Help text: exit code 2 covers all errors, not only bad arguments.
+
+### Changed
+- `-r` skips `.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa`-style keys and `.ssh` / `.aws` / `.gnupg`,
+  since every searched line is sent to the TypeSafe API. A file named explicitly is still searched.
+- Blank lines are not sent to the API; they count as probability 0 for every meaning, so `-v X` prints them
+  and `-e X` never does (grep -v semantics).
+- The stderr summary line is printed only when stderr is a terminal.
+- `docs/` is included in the npm package so the README image resolves.
+
+## [0.2.0] - 2026-09-19
+
+### Changed
+- **Breaking:** `-c` now means "count matching lines per file" (grep -c). Lines per request moved to `--chunk=LINES`.
+- `-t` / `-T` must be between 0 and 1.
+- `-r` keeps the leading `./` in file names.
+
+### Fixed
+- Output no longer truncated when stdout is a pipe (`process.exitCode` instead of `process.exit()`).
+- `--chunk 0` and `-j 0` no longer hang.
+- `fetch` has a 60 s timeout; connection errors and 5xx are retried with backoff like 429 / 529.
+- `-r` skips symbolic links (no infinite loops).
+- `-C=10` and similar are rejected with a clear message instead of silently matching nothing.
+
+### Added
+- `tests/check.sh` covers `-l`, `-c`, `-r`, `-C`, out-of-range thresholds and `-C=1`.
+
+## [0.1.1] - 2026-09-19
+
+### Added
+- `--help` in English, or Japanese when `LC_ALL` / `LC_MESSAGES` / `LANG` starts with `ja`.
+- README: `npx @uehaj/semgrep` usage.
+
+## [0.1.0] - 2026-09-19
+
+First release as `@uehaj/semgrep`.
+
+### Added
+- Semantic grep: one `noul` question per line and meaning against TypeSafe Jev, 30 lines per request, 8 requests in parallel.
+- Expression grammar: `-e` (OR), `-a` (AND), `-v` (AND NOT), `!MEANING` for per-meaning negation.
+- Thresholds: `-t` (positive), `-T` (negative), presets `--level loose|normal|strict`.
+- grep-compatible options: `-n`, `-r`, `-l`, `-A` / `-B` / `-C`, `--color[=WHEN]` (honors `NO_COLOR`).
+- `-p` prints each meaning's probability, colored against the thresholds.
+- API key lookup: `TYPESAFE_API_KEY`, `$SEMGREP_ENV`, `./.env`, `~/.config/semgrep/.env`.
+- Errors are one line plus exit code 2, no stack traces.
+- LLM-as-judge test (`tests/judge.mts`) with threshold sweep; self-check (`tests/check.sh`).
+
+[Unreleased]: https://github.com/uehaj/jev-semgrep/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/uehaj/jev-semgrep/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/uehaj/jev-semgrep/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/uehaj/jev-semgrep/compare/40b0d5d...v0.1.1
+[0.1.0]: https://github.com/uehaj/jev-semgrep/commits/40b0d5d
