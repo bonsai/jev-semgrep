@@ -48,7 +48,15 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -h, --help   このヘルプ
 
 終了コード: 一致あり 0 / なし 1 / 引数エラー 2
-API キー: 環境変数 TYPESAFE_API_KEY。未設定なら $SEMGREP_ENV, ./.env, ~/.config/semgrep/.env の順に探す`);
+
+API キーの設定 (TypeSafe / Jev):
+  https://console.typesafe.ai/ でキーを取得し、次のいずれかで渡す。上から順に探す。
+    export TYPESAFE_API_KEY=your-key                         環境変数
+    SEMGREP_ENV=/path/to/.env semgrep ...                    任意の .env ファイル
+    ./.env                                                   カレントディレクトリ (プロジェクト単位)
+    ~/.config/semgrep/.env                                   ユーザー単位
+  .env の中身は 1 行:  TYPESAFE_API_KEY=your-key
+  例:  mkdir -p ~/.config/semgrep && echo 'TYPESAFE_API_KEY=your-key' > ~/.config/semgrep/.env`);
   process.exit(0);
 }
 
