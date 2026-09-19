@@ -100,6 +100,12 @@ npm install -g @uehaj/semgrep
 semgrep --help
 ```
 
+To try it without installing, run it through `npx` (the first run downloads the package, later runs use the cache):
+
+```sh
+npx @uehaj/semgrep -n -e "customer is angry or frustrated" tickets.txt
+```
+
 Then give it an API key from the [TypeSafe console](https://console.typesafe.ai/). Any one of these works:
 
 ```sh

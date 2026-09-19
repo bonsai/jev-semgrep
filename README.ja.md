@@ -97,6 +97,12 @@ npm install -g @uehaj/semgrep
 semgrep --help
 ```
 
+インストールせずに試すなら `npx` で実行できます（初回だけダウンロードし、2 回目以降はキャッシュから起動します）。
+
+```sh
+npx @uehaj/semgrep -n -e "顧客が怒っている、または不満を持っている" tickets.txt
+```
+
 次に [TypeSafe のコンソール](https://console.typesafe.ai/) で取得した API キーを渡します。どれか 1 つで構いません。
 
 ```sh
