@@ -1,7 +1,7 @@
-// LLM-as-judge: cases.json の各ケースについて、Claude (claude -p) が「各意味に本当に合致する行」を
-// 判定した結果を正解とし、semgrep の per-line 確率に対して閾値 (-t 肯定 / -T 否定) を総当たりして
-// 最良の組を探す。式の評価は judge の per-meaning 判定に対してこちらで行い、judge にブール式は解かせない。
-// judge の判定は verdicts.json にキャッシュされる (意味の文字列がキー)。--rejudge で作り直す。
+// LLM-as-judge: for each case in cases.json, Claude (claude -p) decides which lines truly match each meaning.
+// Those verdicts are the ground truth. We then sweep the thresholds (-t positive / -T negative) over semgrep's
+// per-line probabilities and report the best pair. The boolean expression is evaluated here on the per-meaning
+// verdicts; the judge never sees the expression. Verdicts are cached in verdicts.json keyed by meaning text; --rejudge rebuilds.
 //   SEMGREP_ENV=... node --no-warnings tests/judge.mts [--model MODEL] [--rejudge]
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -51,9 +51,9 @@ Answer with ONLY a JSON object mapping "M0", "M1", ... to arrays of line numbers
   writeFileSync(cachePath, JSON.stringify(cache, null, 1));
 }
 
-// semgrep を閾値ゼロで走らせて全行の確率を取る。以降の閾値評価は API を叩かない。
+// Run semgrep once with a zero threshold to get every line's probabilities; the threshold sweep never calls the API.
 function probabilities(meanings: string[]): Map<number, number[]> {
-  // 各意味を肯定の -e で並べ -t 0 にすれば全行が出力され、-p で意味ごとの確率が取れる
+  // Listing every meaning as a positive -e with -t 0 prints every line, and -p gives the probability per meaning.
   const out = execFileSync('node', [`${dir}../semgrep.mjs`, '-n', '-p', '-t', '0', ...meanings.flatMap(m => ['-e', m]), `${dir}corpus.txt`],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   return new Map(out.split('\n').filter(Boolean).map(l => {

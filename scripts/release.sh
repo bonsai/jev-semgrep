@@ -1,17 +1,17 @@
 #!/bin/sh
-# リリース: 版を上げて GitHub にタグを push し、npm に公開し、GitHub Release を作る。
+# Release: bump the version, push the tag to GitHub, publish to npm, create a GitHub Release.
 #   sh scripts/release.sh patch|minor|major|<x.y.z>
-# 前提: main ブランチ、作業ツリーがきれい、origin/main と一致、テストが通る。
-# npm publish は 2 要素認証をブラウザで行うので、対話端末から実行すること (`!` 経由は不可)。
+# Preconditions: on main, clean working tree, HEAD == origin/main, tests pass.
+# npm publish does 2FA in the browser, so run this from an interactive terminal (not via `!`).
 set -eu
 cd "$(dirname "$0")/.."
 bump=${1:?usage: release.sh patch|minor|major|x.y.z}
 
-[ "$(git branch --show-current)" = main ] || { echo "release: main ブランチで実行してください" >&2; exit 1; }
-[ -z "$(git status --porcelain)" ] || { echo "release: コミットされていない変更があります" >&2; exit 1; }
+[ "$(git branch --show-current)" = main ] || { echo "release: run this on the main branch" >&2; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "release: working tree has uncommitted changes" >&2; exit 1; }
 git fetch -q origin
-[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "release: origin/main と一致していません (pull または push してください)" >&2; exit 1; }
-npm whoami >/dev/null 2>&1 || { echo "release: npm にログインしていません (npm login)" >&2; exit 1; }
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "release: HEAD differs from origin/main (pull or push first)" >&2; exit 1; }
+npm whoami >/dev/null 2>&1 || { echo "release: not logged in to npm (npm login)" >&2; exit 1; }
 
 sh tests/check.sh
 

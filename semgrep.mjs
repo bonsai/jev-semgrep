@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// semgrep: jev (TypeSafe System One) で「意味的に」マッチする行を探す grep。
+// semgrep: grep by meaning, scored line by line with Jev (TypeSafe System One).
 //   semgrep -e "network failure" -a "already retried" -e "customer wants a refund" FILE...
-//   -e は OR で並び、-a / -v は直前の -e 項に AND / AND NOT で連結する。(A and B and not C) or D。
-//   意味の先頭に ! を付けるとその意味だけ否定できる。-e A -e '!B' は A or not B。
+//   -e terms are OR'd; -a / -v attach AND / AND NOT to the preceding -e term: (A and B and not C) or D.
+//   A leading ! negates just that meaning: -e A -e '!B' is A or not B.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 
-// エラーは grep と同じく 1 行 + 終了コード 2。スタックトレースは出さない。
+// Errors are one line plus exit code 2, like grep. No stack traces.
 const die = msg => { console.error(`semgrep: ${msg}\nTry 'semgrep --help' for more information.`); process.exit(2); };
 process.on('uncaughtException', e => die(e.message));
 
-// 裸の --color は --color=auto と同じ (grep と同様)。parseArgs は値なしを扱えないので先に補う。
+// A bare --color means --color=auto (as in grep). parseArgs cannot express an optional value, so fill it in first.
 const argv = process.argv.slice(2).map(a => (a === '--color' ? '--color=auto' : a));
 const { values: opt, positionals: files, tokens } = parseArgs({
   args: argv,
@@ -21,24 +21,24 @@ const { values: opt, positionals: files, tokens } = parseArgs({
     e: { type: 'string', multiple: true },
     a: { type: 'string', multiple: true },
     v: { type: 'string', multiple: true },
-    level: { type: 'string', default: 'normal' }, // 厳しさのプリセット: loose / normal / strict
-    r: { type: 'boolean', default: false }, // ディレクトリを再帰
-    l: { type: 'boolean', default: false }, // 一致したファイル名だけ
-    t: { type: 'string' }, // 肯定の閾値: p >= t で一致 (既定はプリセット)
-    T: { type: 'string' }, // 否定の閾値: p < T で「〜でない」と判定 (既定はプリセット)
-    chunk: { type: 'string', default: '30' }, // 1リクエストあたりの行数
-    c: { type: 'boolean', default: false }, // ファイルごとの一致行数 (grep -c)
-    j: { type: 'string', default: '8' }, // 並列リクエスト数
-    A: { type: 'string' }, // 一致行の後ろ N 行
-    B: { type: 'string' }, // 一致行の前 N 行
-    C: { type: 'string' }, // 前後 N 行
-    n: { type: 'boolean', default: false }, // 行番号
-    p: { type: 'boolean', default: false }, // 各意味の確率を表示
+    level: { type: 'string', default: 'normal' }, // strictness preset: loose / normal / strict
+    r: { type: 'boolean', default: false }, // recurse into directories
+    l: { type: 'boolean', default: false }, // print only matching file names
+    t: { type: 'string' }, // positive threshold: match when p >= t (default from preset)
+    T: { type: 'string' }, // negative threshold: "not X" when p < T (default from preset)
+    chunk: { type: 'string', default: '30' }, // lines per request
+    c: { type: 'boolean', default: false }, // count of matching lines per file (grep -c)
+    j: { type: 'string', default: '8' }, // concurrent requests
+    A: { type: 'string' }, // N lines of trailing context
+    B: { type: 'string' }, // N lines of leading context
+    C: { type: 'string' }, // N lines of context on both sides
+    n: { type: 'boolean', default: false }, // line numbers
+    p: { type: 'boolean', default: false }, // print each meaning's probability
     color: { type: 'string', default: 'auto' }, // auto / always / never
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
-// --help: ロケールが ja なら日本語、それ以外は英語
+// --help: Japanese when the locale starts with ja, English otherwise
 const HELP_EN = `usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
 grep by meaning, powered by Jev (TypeSafe System One). Reads stdin when FILE is omitted.
 
@@ -131,7 +131,7 @@ if (opt.help) {
   process.exit(0);
 }
 
-// API キー: 環境変数になければ .env ファイルを順に探す
+// API key: if not in the environment, look for a .env file in order
 if (!process.env.TYPESAFE_API_KEY) {
   const candidates = [process.env.SEMGREP_ENV, '.env', `${homedir()}/.config/semgrep/.env`];
   const found = candidates.find(f => f && existsSync(f));
@@ -140,13 +140,13 @@ if (!process.env.TYPESAFE_API_KEY) {
 const apiKey = process.env.TYPESAFE_API_KEY;
 if (!apiKey) die('TYPESAFE_API_KEY is not set. Put it in ./.env or ~/.config/semgrep/.env');
 
-// 式: OR で並ぶ AND 項のリスト。項の要素は [意味の番号, 否定か]。meanings は重複なしの全意味。
+// Expression: a list of AND terms joined by OR. Each literal is [meaning index, negated]. meanings holds each distinct meaning once.
 const expr = [];
 const meanings = [];
 for (const tk of tokens) {
   if (tk.kind !== 'option' || !['e', 'a', 'v'].includes(tk.name)) continue;
   if (tk.name === 'a' && expr.length === 0) die('-a needs a preceding -e');
-  const not = tk.value.startsWith('!'); // 個別の否定: "!MEANING"
+  const not = tk.value.startsWith('!'); // per-meaning negation: "!MEANING"
   const text = not ? tk.value.slice(1) : tk.value;
   if (!text.trim()) die(`-${tk.name}: MEANING must not be empty`);
   let m = meanings.indexOf(text);
@@ -162,15 +162,15 @@ if (!level) die(`--level must be one of ${Object.keys(levels).join(', ')}`);
 const tPos = opt.t === undefined ? level[0] : Number(opt.t);
 const tNeg = opt.T === undefined ? level[1] : Number(opt.T);
 const chunkLines = Number(opt.chunk);
-// 数値オプションの検証。-C=10 のような書き方は parseArgs が "=10" を値にするので、ここで弾く
+// Validate numeric options. parseArgs turns -C=10 into the value "=10", so reject that here.
 for (const [k, label] of [['t', '-t'], ['T', '-T'], ['chunk', '--chunk'], ['j', '-j'], ['A', '-A'], ['B', '-B'], ['C', '-C']])
   if (opt[k] !== undefined && !/^\d+(\.\d+)?$/.test(opt[k])) die(`${label}: invalid number '${opt[k]}' (write ${label} 10 or ${label}10, not ${label}=10)`);
 if (chunkLines < 1) die('--chunk must be at least 1');
 if (tPos < 0 || tPos > 1 || tNeg < 0 || tNeg > 1) die('-t / -T must be between 0 and 1');
 if (Number(opt.j) < 1) die('-j must be at least 1');
 
-// -r ならディレクトリを展開する。行の内容は外部 API に送られるので、.git / node_modules と
-// 秘密情報になりがちなもの (.env*, 鍵, .ssh/.aws/.gnupg) は再帰では飛ばす。明示的にファイルを渡せば送る。
+// With -r, expand directories. Line contents go to an external API, so recursion skips .git / node_modules
+// and files that usually hold secrets (.env*, keys, .ssh/.aws/.gnupg). A file named explicitly is still sent.
 const SKIP_DIRS = ['.git', 'node_modules', '.ssh', '.aws', '.gnupg'];
 const SKIP_FILE = /^\.env(\..*)?$|\.(pem|key|p12|pfx)$|^id_(rsa|dsa|ecdsa|ed25519)(\.pub)?$/;
 let hadError = false;
@@ -183,11 +183,11 @@ function expand(path) {
   return readdirSync(path, { withFileTypes: true })
     .filter(d => !d.isSymbolicLink() && !(d.isDirectory() ? SKIP_DIRS.includes(d.name) : SKIP_FILE.test(d.name)))
     .sort((a, b) => a.name.localeCompare(b.name))
-    .flatMap(d => expand(path.endsWith('/') ? path + d.name : `${path}/${d.name}`)); // join() は ./ を落とすので使わない
+    .flatMap(d => expand(path.endsWith('/') ? path + d.name : `${path}/${d.name}`)); // not path.join(): it would drop the leading ./
 }
 const targets = (files.length ? files : [opt.r ? '.' : '-']).flatMap(f => (f === '-' ? [f] : expand(f)));
-const sources = new Map(); // file -> 全行 (文脈表示用。空行も含む)
-const allLines = []; // { file, no, text }  空行も含む。式の評価対象
+const sources = new Map(); // file -> all lines (for context output; includes blank lines)
+const allLines = []; // { file, no, text }; includes blank lines; what the expression is evaluated over
 for (const file of targets) {
   let buf;
   try { buf = readFileSync(file === '-' ? 0 : file); } catch (e) { warn(file, e); continue; }
@@ -197,10 +197,10 @@ for (const file of targets) {
   sources.set(file, src);
   src.forEach((text, i) => allLines.push({ file, no: i + 1, text }));
 }
-// 空行・空白だけの行は API に送らず、全意味の確率 0 として扱う (-e には当たらず -v には当たる)
+// Blank and whitespace-only lines are not sent; they count as probability 0 for every meaning (never match -e, always match -v).
 const lines = allLines.filter(l => l.text.trim());
 
-// 行数と文字数の両方で区切る。state+最長質問は 32k トークンが上限。
+// Chunk by line count and by characters. The API caps state + longest question at 32k tokens.
 const chunks = [];
 for (let i = 0; i < lines.length; ) {
   const chunk = [];
@@ -232,7 +232,7 @@ async function evaluate(chunk) {
         signal: AbortSignal.timeout(60_000),
       });
     } catch (e) {
-      if (attempt < 6) { await sleep(500 * 2 ** attempt); continue; } // 接続断・タイムアウトも再試行
+      if (attempt < 6) { await sleep(500 * 2 ** attempt); continue; } // retry on connection errors and timeouts too
       throw new Error(`typesafe: ${e.cause?.message ?? e.message}`);
     }
     if ((res.status === 429 || res.status === 529 || res.status >= 500) && attempt < 6) {
@@ -246,7 +246,7 @@ async function evaluate(chunk) {
   }
 }
 
-// -j 本まで同時に投げ、結果はチャンク順に出力する。
+// Run up to -j requests at once; results are consumed in chunk order.
 let running = 0;
 const waiters = [];
 const acquire = () => (running++ < Number(opt.j) ? Promise.resolve() : new Promise(r => waiters.push(r)));
@@ -261,8 +261,8 @@ if (!['auto', 'always', 'never'].includes(opt.color)) die('--color must be auto,
 const paint = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
 const paintProb = x => paint(x >= tPos ? 32 : x < tNeg ? 31 : 33, x.toFixed(2));
 
-// 一致行を file -> (行番号 -> 確率) に集めてから、ファイル順・行順に文脈つきで出力する。
-const probOf = new Map(); // 行オブジェクト -> 意味ごとの確率
+// Collect matches as file -> (line number -> probabilities), then print in file and line order with context.
+const probOf = new Map(); // line object -> probability per meaning
 for (const [ci, result] of results.entries()) {
   const probs = await result;
   chunks[ci].forEach((l, i) => probOf.set(l, probs[i]));
@@ -279,8 +279,8 @@ for (const l of allLines) {
 }
 
 const after = Number(opt.A ?? opt.C ?? 0), before = Number(opt.B ?? opt.C ?? 0);
-const multi = opt.r || targets.length > 1; // grep -r はファイルが 1 つでも名前を付ける
-let lastPrinted = null; // [file, 行番号]。文脈グループの切れ目に -- を出すため
+const multi = opt.r || targets.length > 1; // grep -r prefixes file names even for a single file
+let lastPrinted = null; // [file, line number]; used to print -- between context groups
 for (const file of targets) {
   if (!sources.has(file)) continue;
   const h = hits.get(file);
@@ -288,7 +288,7 @@ for (const file of targets) {
   if (!h) continue;
   if (opt.l) { console.log(paint(35, file)); continue; }
   const src = sources.get(file);
-  let last = 0; // このファイルで出力済みの最終行番号
+  let last = 0; // last line number already printed for this file
   for (const no of [...h.keys()].sort((a, b) => a - b)) {
     const from = Math.max(no - before, last + 1), to = Math.min(no + after, src.length);
     if ((after || before) && lastPrinted && (lastPrinted[0] !== file || from > last + 1)) console.log(paint(36, '--'));
@@ -303,7 +303,7 @@ for (const file of targets) {
     lastPrinted = [file, to];
   }
 }
-// 集計は対話時だけ。grep はスクリプトから使われたとき stderr に何も出さない
+// Summary only when interactive; grep prints nothing to stderr when scripted.
 if (process.stderr.isTTY) console.error(`${matched}/${allLines.length} lines (${lines.length} sent), ${chunks.length} requests, ${usedTokens} input tokens`);
-// process.exit() だとパイプ先への stdout が書き切られる前に落ちて出力が欠けるので exitCode で終える
+// process.exit() can drop buffered stdout when piped, so set exitCode instead.
 process.exitCode = hadError ? 2 : matched ? 0 : 1;
