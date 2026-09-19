@@ -2,3 +2,4 @@
 .env.*
 workdir/
 node_modules/
+.claude/
