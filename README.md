@@ -260,7 +260,7 @@ and it builds the expression, runs the search and reports `file:line` hits. It i
 ```sh
 npm install -g @uehaj/semgrep              # the skill falls back to npx if this is missing
 claude plugin marketplace add uehaj/skills
-claude plugin install uehaj@uehaj
+claude plugin install uehaj@uehaj-skills
 ```
 
 Then, inside Claude Code:

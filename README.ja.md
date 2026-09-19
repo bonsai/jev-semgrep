@@ -255,7 +255,7 @@ semgrep を代わりに走らせてくれる Claude Code のスキルがあり�
 ```sh
 npm install -g @uehaj/semgrep              # 無ければスキルが npx で代用する
 claude plugin marketplace add uehaj/skills
-claude plugin install uehaj@uehaj
+claude plugin install uehaj@uehaj-skills
 ```
 
 あとは Claude Code の中で次のように打ちます。
