@@ -53,7 +53,7 @@ Answer with ONLY a JSON object mapping "M0", "M1", ... to arrays of line numbers
 
 // semgrep を閾値ゼロで走らせて全行の確率を取る。以降の閾値評価は API を叩かない。
 function probabilities(c: { args: string[] }): Map<number, number[]> {
-  const out = execFileSync('sh', [`${dir}../semgrep`, '-n', '-p', '-t', '0', '-T', '1.01', ...c.args, `${dir}corpus.txt`],
+  const out = execFileSync('node', [`${dir}../semgrep.mjs`, '-n', '-p', '-t', '0', '-T', '1.01', ...c.args, `${dir}corpus.txt`],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   return new Map(out.split('\n').filter(Boolean).map(l => {
     const [, no, probs] = l.match(/^(\d+):.*\t\[(.*)\]$/)!;

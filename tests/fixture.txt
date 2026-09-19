@@ -1,0 +1,30 @@
+2026-09-19 08:00:01 INFO  server started on port 8080
+2026-09-19 08:00:02 INFO  connected to database primary
+2026-09-19 08:01:15 WARN  slow query took 3200ms: SELECT * FROM orders
+2026-09-19 08:02:30 ERROR connection reset by peer while calling payment-gateway
+2026-09-19 08:02:31 INFO  retrying payment-gateway request (attempt 2/3)
+2026-09-19 08:02:35 ERROR timeout after 5000ms waiting for payment-gateway
+ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
+ユーザー鈴木さんからの問い合わせ: 商品はとても気に入りました、ありがとう
+2026-09-19 08:05:00 INFO  scheduled backup completed successfully
+2026-09-19 08:06:12 WARN  disk usage at 91% on /var/lib/postgresql
+The quick brown fox jumps over the lazy dog.
+Please reset my password, I cannot log in to my account.
+2026-09-19 08:10:44 ERROR DNS lookup failed for api.example.com
+2026-09-19 08:10:45 INFO  DNS lookup succeeded on retry
+会議は明日の10時からに変更になりました
+サーバーのメモリが不足していてOOM killerがプロセスを落としました
+Thanks for the great support, issue resolved.
+2026-09-19 08:20:00 INFO  user 4711 logged in
+2026-09-19 08:21:00 INFO  user 4711 logged out
+def parse_config(path):
+    with open(path) as f:
+        return json.load(f)
+# TODO: handle missing file gracefully
+import socket
+socket.setdefaulttimeout(3.0)
+今日の天気は晴れ、最高気温は28度です
+料金プランの変更方法を教えてください
+2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
+Congratulations on the launch!
+network unreachable: no route to host 10.0.0.5

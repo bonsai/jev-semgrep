@@ -3,11 +3,9 @@
 //   semgrep -e "network failure" -a "already retried" -e "customer wants a refund" FILE...
 //   -e は OR で並び、-a / -v は直前の -e 項に AND / AND NOT で連結する。(A and B and not C) or D。
 //   意味の先頭に ! を付けるとその意味だけ否定できる。-e A -e '!B' は A or not B。
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
-
-const apiKey = process.env.TYPESAFE_API_KEY;
-if (!apiKey) throw new Error('TYPESAFE_API_KEY is not set (--env-file?)');
 
 const { values: opt, positionals: files, tokens } = parseArgs({
   allowPositionals: true,
@@ -50,34 +48,42 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -h, --help   このヘルプ
 
 終了コード: 一致あり 0 / なし 1 / 引数エラー 2
-環境変数: TYPESAFE_API_KEY (ラッパー semgrep は .env / SEMGREP_ENV から読む)`);
+API キー: 環境変数 TYPESAFE_API_KEY。未設定なら $SEMGREP_ENV, ./.env, ~/.config/semgrep/.env の順に探す`);
   process.exit(0);
 }
 
+// API キー: 環境変数になければ .env ファイルを順に探す
+if (!process.env.TYPESAFE_API_KEY) {
+  const candidates = [process.env.SEMGREP_ENV, '.env', `${homedir()}/.config/semgrep/.env`];
+  const found = candidates.find(f => f && existsSync(f));
+  if (found) process.loadEnvFile(found);
+}
+const apiKey = process.env.TYPESAFE_API_KEY;
+if (!apiKey) throw new Error('TYPESAFE_API_KEY is not set. Put it in ./.env or ~/.config/semgrep/.env');
+
 // 式: OR で並ぶ AND 項のリスト。項の要素は [意味の番号, 否定か]。meanings は重複なしの全意味。
-const expr: [number, boolean][][] = [];
-const meanings: string[] = [];
+const expr = [];
+const meanings = [];
 for (const tk of tokens) {
   if (tk.kind !== 'option' || !['e', 'a', 'v'].includes(tk.name)) continue;
   if (tk.name === 'a' && expr.length === 0) throw new Error('-a needs a preceding -e');
-  const not = tk.value!.startsWith('!'); // 個別の否定: "!MEANING"
-  const text = not ? tk.value!.slice(1) : tk.value!;
+  const not = tk.value.startsWith('!'); // 個別の否定: "!MEANING"
+  const text = not ? tk.value.slice(1) : tk.value;
   let m = meanings.indexOf(text);
   if (m < 0) m = meanings.push(text) - 1;
-  const lit: [number, boolean] = [m, not !== (tk.name === 'v')];
+  const lit = [m, not !== (tk.name === 'v')];
   if (tk.name === 'e' || expr.length === 0) expr.push([lit]);
-  else expr.at(-1)!.push(lit);
+  else expr.at(-1).push(lit);
 }
 if (!meanings.length) throw new Error('no -e/-v MEANING given');
-const levels: Record<string, [number, number]> = { loose: [0.3, 0.7], normal: [0.5, 0.5], strict: [0.7, 0.3] };
-const level = levels[opt.l!];
+const levels = { loose: [0.3, 0.7], normal: [0.5, 0.5], strict: [0.7, 0.3] };
+const level = levels[opt.l];
 if (!level) throw new Error(`-l must be one of ${Object.keys(levels).join(', ')}`);
 const tPos = opt.t === undefined ? level[0] : Number(opt.t);
 const tNeg = opt.T === undefined ? level[1] : Number(opt.T);
 const chunkLines = Number(opt.c);
 
-type Line = { file: string; no: number; text: string };
-const lines: Line[] = [];
+const lines = []; // { file, no, text }
 for (const file of files.length ? files : ['-']) {
   const src = readFileSync(file === '-' ? 0 : file, 'utf8').split('\n');
   if (src.at(-1) === '') src.pop();
@@ -85,9 +91,9 @@ for (const file of files.length ? files : ['-']) {
 }
 
 // 行数と文字数の両方で区切る。state+最長質問は 32k トークンが上限。
-const chunks: Line[][] = [];
+const chunks = [];
 for (let i = 0; i < lines.length; ) {
-  const chunk: Line[] = [];
+  const chunk = [];
   let chars = 0;
   while (i < lines.length && chunk.length < chunkLines && chars < 20000) {
     chars += lines[i].text.length;
@@ -96,13 +102,13 @@ for (let i = 0; i < lines.length; ) {
   chunks.push(chunk);
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 let usedTokens = 0;
 
-async function evaluate(chunk: Line[]): Promise<number[][]> {
-  const id = (i: number) => `L${String(i).padStart(3, '0')}`;
+async function evaluate(chunk) {
+  const id = i => `L${String(i).padStart(3, '0')}`;
   const state = Object.fromEntries(chunk.map((l, i) => [id(i), l.text.slice(0, 2000)]));
-  const questions: Record<string, unknown> = {};
+  const questions = {};
   chunk.forEach((_, i) => meanings.forEach((text, m) => {
     questions[`${id(i)}_${m}`] = { type: 'noul', instructions: `Does line ${id(i)} match the meaning: "${text}"?` };
   }));
@@ -119,14 +125,14 @@ async function evaluate(chunk: Line[]): Promise<number[][]> {
     if (!res.ok) throw new Error(`typesafe ${res.status}: ${await res.text()}`);
     const { answers, usage } = await res.json();
     usedTokens += usage.input_tokens;
-    return chunk.map((_, i) => meanings.map((_, m) => answers[`${id(i)}_${m}`].noul as number));
+    return chunk.map((_, i) => meanings.map((_, m) => answers[`${id(i)}_${m}`].noul));
   }
 }
 
 // -j 本まで同時に投げ、結果はチャンク順に出力する。
 let running = 0;
-const waiters: (() => void)[] = [];
-const acquire = () => (running++ < Number(opt.j) ? Promise.resolve() : new Promise<void>(r => waiters.push(r)));
+const waiters = [];
+const acquire = () => (running++ < Number(opt.j) ? Promise.resolve() : new Promise(r => waiters.push(r)));
 const release = () => (running--, waiters.shift()?.());
 const results = chunks.map(async chunk => {
   await acquire();

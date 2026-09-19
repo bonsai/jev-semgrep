@@ -11,7 +11,7 @@ Jev は文章を生成せず、typed な質問に確率だけを返すモデル�
 ./semgrep -n -e "顧客が怒っている、または不満を持っている" tickets.txt
 ```
 
-- 依存ゼロ。Node.js 23.6 以降（`.mts` の型剥がし）と `fetch` だけで動きます。
+- 依存ゼロ。1 ファイル、Node.js 20.12 以降と `fetch` だけで動きます。
 - 速い。30 行を 1 リクエストにまとめ、8 本並列で投げます。210 行のファイルが 1 秒弱で終わります。
 - 意味は AND / OR / NOT で自由に組み合わせられます。
 - **言語をまたげる。** 日本語で書いた意味で英語の行が、英語で書いた意味で日本語の行が見つかります。翻訳は挟まず、速度も費用も同じです。
@@ -46,23 +46,25 @@ $ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
 
 ## インストール
 
-必要なものは Node.js 23.6 以降（`node --version` で確認）と、
-[TypeSafe のコンソール](https://console.typesafe.ai/) で取得した API キーだけです。`npm install` は不要です。
+Node.js 20.12 以降が必要です。ほかの依存はありません。
 
 ```sh
-git clone https://github.com/uehaj/jev-semgrep.git
-cd jev-semgrep
-echo 'TYPESAFE_API_KEY=your-key' > .env
-chmod +x semgrep
-ln -s "$PWD/semgrep" ~/.local/bin/semgrep    # PATH の通った任意のディレクトリでよい
+npm install -g jev-semgrep
 semgrep --help
 ```
 
-ラッパーはシンボリックリンクの先のディレクトリにある `.env` を読むので、どこから呼んでも動きます。
-キーを別の場所に置くなら `SEMGREP_ENV=/path/to/.env`、または `TYPESAFE_API_KEY` を export して `.env` を省いても構いません。
-`.env` は git 管理外です。
+次に [TypeSafe のコンソール](https://console.typesafe.ai/) で取得した API キーを渡します。どれか 1 つで構いません。
 
-更新は `git -C /path/to/jev-semgrep pull` です。
+```sh
+export TYPESAFE_API_KEY=your-key                      # 環境変数
+echo 'TYPESAFE_API_KEY=your-key' > ~/.config/semgrep/.env   # ユーザー単位 (先に mkdir -p)
+echo 'TYPESAFE_API_KEY=your-key' > .env               # プロジェクト単位。カレントディレクトリから読む
+```
+
+探す順は環境変数、`$SEMGREP_ENV`、`./.env`、`~/.config/semgrep/.env` です。
+
+ソースから使うなら `git clone https://github.com/uehaj/jev-semgrep.git && cd jev-semgrep && npm install -g .`、
+またはそのまま `node semgrep.mjs ...` で動きます。
 
 > 静的解析ツールの [Semgrep](https://semgrep.dev/) と同名です。両方使うならどちらかを別名にしてください。
 

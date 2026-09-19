@@ -12,7 +12,7 @@ and applies a threshold.
 ./semgrep -n -e "customer is angry or frustrated" tickets.txt
 ```
 
-- Zero dependencies. Node.js 23.6+ (native type stripping) and `fetch`.
+- Zero dependencies. One file, Node.js 20.12+ and `fetch`.
 - Fast. 30 lines go into one request, requests run 8 at a time. A 210-line file finishes in under a second.
 - Meanings combine with AND / OR / NOT.
 - **Cross-lingual.** Write the meaning in Japanese and find English lines, or the other way round. No translation step, same speed, same cost.
@@ -48,23 +48,25 @@ phrasing the meaning in English is the safer choice.
 
 ## Install
 
-Requirements: Node.js 23.6 or later (`node --version`) and a TypeSafe API key from the
-[TypeSafe console](https://console.typesafe.ai/). Nothing to `npm install`.
+Requires Node.js 20.12 or later. No other dependencies.
 
 ```sh
-git clone https://github.com/uehaj/jev-semgrep.git
-cd jev-semgrep
-echo 'TYPESAFE_API_KEY=your-key' > .env
-chmod +x semgrep
-ln -s "$PWD/semgrep" ~/.local/bin/semgrep    # or any directory on your PATH
+npm install -g jev-semgrep
 semgrep --help
 ```
 
-The wrapper reads `.env` from the directory the symlink points to, so it works from anywhere.
-To keep the key elsewhere, set `SEMGREP_ENV=/path/to/.env`, or export `TYPESAFE_API_KEY` and skip `.env`.
-`.env` is git-ignored.
+Then give it an API key from the [TypeSafe console](https://console.typesafe.ai/). Any one of these works:
 
-To update: `git -C /path/to/jev-semgrep pull`.
+```sh
+export TYPESAFE_API_KEY=your-key                      # environment variable
+echo 'TYPESAFE_API_KEY=your-key' > ~/.config/semgrep/.env   # per user (mkdir -p first)
+echo 'TYPESAFE_API_KEY=your-key' > .env               # per project, read from the current directory
+```
+
+Lookup order is the environment variable, then `$SEMGREP_ENV`, `./.env`, `~/.config/semgrep/.env`.
+
+From source: `git clone https://github.com/uehaj/jev-semgrep.git && cd jev-semgrep && npm install -g .`,
+or run it in place with `node semgrep.mjs ...`.
 
 > The name collides with the static-analysis tool [Semgrep](https://semgrep.dev/). Rename one of them if you use both.
 
