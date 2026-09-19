@@ -1,0 +1,45 @@
+a1b2c3d Initial commit
+b2c3d4e Add login page
+c3d4e5f Fix typo in README
+d4e5f6a It works now. I don't know why. Do not touch.
+e5f6a7b Remove console.log statements (most of them)
+f6a7b8c Friday 18:55 deploy, what could go wrong
+a7b8c9d Revert "Friday 18:55 deploy, what could go wrong"
+b8c9d0e Fix the fix
+c9d0e1f Tests pass locally, so it's CI's fault
+d0e1f2a Add tests (they fail, but that's a tomorrow problem)
+e1f2a3b Rename final_v2_REAL_final.js to app.js
+f2a3b4c Increase timeout to 30s because the API is slow (not our bug)
+a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん
+b4c5d6e とりあえず動くようにした。理由は不明
+c5d6e7f Refactor: moved everything into one file, much cleaner
+d6e7f8a Bump version to 1.0.0 🎉
+e7f8a9b Bump version to 1.0.1 (hotfix for 1.0.0)
+f8a9b0c Bump version to 1.0.2 (hotfix for the hotfix)
+a9b0c1d Hab Prod kaputt gemacht, sorry Leute
+b0c1d2e Ajout du cache (personne ne sait comment l'invalider)
+c1d2e3f Update dependencies, hope nothing breaks
+d2e3f4a Nothing broke. Everything broke. Reverting.
+e3f4a5b Add dark mode
+f4a5b6c Fix dark mode (was actually light mode)
+a5b6c7d Blame the intern for the migration script
+b6c7d8e Actually it was me. Fix migration script
+c7d8e9f WIP
+d8e9f0a WIP 2
+e9f0a1b WIP do not merge
+f0a1b2c Merged WIP do not merge
+a1b2c3e Optimize query: 40s -> 39s
+b2c3d4f Add TODO to remove the TODO
+c3d4e5a 3am fix, will explain in the morning
+d4e5f6b Remove feature nobody used (marketing says 4 people used it)
+e5f6a7c Re-add feature (the 4 people are the board of directors)
+f6a7b8d Fix memory leak by restarting the server every hour
+a7b8c9e Add comment explaining the hack. The comment is longer than the hack
+b8c9d0f Delete 3000 lines. Nobody noticed. Best day of my career
+c9d0e1a Security fix: removed the password from the README
+d0e1f2b Security fix: removed the password from git history (please rotate it)
+e1f2a3c Add rate limiting after the bot found us
+f2a3b4d Fix: the bug was in the fix for the previous fix
+a3b4c5e README: add "works on my machine" badge
+b4c5d6f Prepare for the demo. Please work.
+c5d6e7a Demo went fine. Rolling back all demo changes.

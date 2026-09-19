@@ -145,84 +145,106 @@ or run it in place with `node semgrep.mjs ...`.
 
 ## Examples
 
-All examples run against [`tests/corpus.txt`](tests/corpus.txt), a 51-line mix of server logs,
-support tickets in English and Japanese, source code, SQL and small talk.
+All examples run against [`tests/commits.txt`](tests/commits.txt): the git log of a project that has seen things.
+45 commit messages, a few of them in Japanese, German and French.
 
-### Find lines by a concept, in any language
-
-```sh
-$ ./semgrep -n -e "customer is angry or frustrated" tests/corpus.txt
-14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
-16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
-18:I want my money back. The item arrived broken and customer service ignored me.
-21:Your product ruined my weekend. Never buying from you again.
-23:This is the third time I'm writing. Nobody has replied to my previous emails.
-5/51 lines, 2 requests, 3225 input tokens
-```
-
-None of these lines contain the words "angry" or "frustrated". The Japanese lines were found by an English meaning.
-
-### OR: two meanings, and see the probabilities with `-p`
+### Find the commits that confess
 
 ```sh
-$ ./semgrep -n -p -e "返金の要求" -e "配送先の変更依頼" tests/corpus.txt
-14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた	[0.97 0.02]
-17:ユーザー高橋さんからの問い合わせ: 配送先の住所を変更したいのですが	[0.01 0.96]
-18:I want my money back. The item arrived broken and customer service ignored me.	[0.96 0.01]
-22:Can I change the delivery address for order #8821?	[0.02 0.96]
-4/51 lines, 2 requests, 4602 input tokens
+$ ./semgrep -e "the author admits they do not understand why the code works" tests/commits.txt
+d4e5f6a It works now. I don't know why. Do not touch.
+b4c5d6e とりあえず動くようにした。理由は不明
+a3b4c5e README: add "works on my machine" badge
 ```
 
-The bracket shows one probability per meaning, in the order given. Use it to pick a threshold.
+No keyword would find all three. The Japanese one says "made it work for now, reason unknown".
 
-With `--color` (on by default in a terminal) the probabilities are colored against the thresholds:
-green at or above `-t`, red below `-T`, yellow in between. Line numbers and file names use grep's colors.
+### Ask in Japanese, find English and German
+
+```sh
+$ ./semgrep -e "本番環境を壊した" tests/commits.txt
+a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん
+a9b0c1d Hab Prod kaputt gemacht, sorry Leute
+```
+
+The meaning is "broke production". It finds the Japanese apology and the German one.
+
+### AND NOT: who blamed someone else and never took it back
+
+```sh
+$ ./semgrep -e "someone is blamed for the problem" -v "the author takes responsibility" tests/commits.txt
+a5b6c7d Blame the intern for the migration script
+```
+
+The next commit in the log is `Actually it was me. Fix migration script`. It is about blame too, but the author
+owns it, so `-v` drops it.
+
+### AND: fixes that fix fixes
+
+```sh
+$ ./semgrep -e "a bug fix" -a "the fix is itself broken or fixes another fix" tests/commits.txt
+b8c9d0e Fix the fix
+e7f8a9b Bump version to 1.0.1 (hotfix for 1.0.0)
+f8a9b0c Bump version to 1.0.2 (hotfix for the hotfix)
+f4a5b6c Fix dark mode (was actually light mode)
+f2a3b4d Fix: the bug was in the fix for the previous fix
+```
+
+Plain `Fix typo in README` and `Fix migration script` are fixes, but not fixes of fixes, so they stay out.
+
+### Count, then look at the probabilities with `-p`
+
+```sh
+$ ./semgrep -c -e "the author sounds like they need sleep or a vacation" tests/commits.txt
+8
+
+$ ./semgrep -n -p -e "the author sounds like they need sleep or a vacation" tests/commits.txt
+4:d4e5f6a It works now. I don't know why. Do not touch.	[0.59]
+6:f6a7b8c Friday 18:55 deploy, what could go wrong	[0.67]
+10:d0e1f2a Add tests (they fail, but that's a tomorrow problem)	[0.50]
+13:a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん	[0.57]
+22:d2e3f4a Nothing broke. Everything broke. Reverting.	[0.55]
+33:c3d4e5a 3am fix, will explain in the morning	[0.82]
+36:f6a7b8d Fix memory leak by restarting the server every hour	[0.65]
+38:b8c9d0f Delete 3000 lines. Nobody noticed. Best day of my career	[0.51]
+```
+
+The bracket is the probability for each meaning, in the order given. The 3am fix is the clear winner; the rest sit
+near the 0.5 threshold, which is what `-p` is for: raise `-t` to 0.6 and only the Friday deploy, the 3am fix and
+the hourly restart remain. With `--color` (on by default in a terminal) the probabilities are colored against the
+thresholds: green at or above `-t`, red below `-T`, yellow in between. Line numbers and file names use grep's colors.
 
 ![colored output: line numbers in green, probabilities in green or red](docs/color.svg)
 
-### AND NOT: network errors, excluding retries
+### Context lines, queried in Japanese
 
 ```sh
-$ ./semgrep -n -e "network or remote connection failure" -v "a retry is happening or was attempted" tests/corpus.txt
-4:2026-09-19 08:02:30 ERROR connection reset by peer while calling payment-gateway
-6:2026-09-19 08:02:35 ERROR timeout after 5000ms waiting for payment-gateway
-9:2026-09-19 08:10:44 ERROR DNS lookup failed for api.example.com
-11:2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
-13:network unreachable: no route to host 10.0.0.5
-30:except ConnectionError as e:
-31:    logger.error("upstream unreachable: %s", e)
-7/51 lines, 2 requests, 5112 input tokens
+$ ./semgrep -n -C 1 -e "誰も気づかなかった" tests/commits.txt
+37-a7b8c9e Add comment explaining the hack. The comment is longer than the hack
+38:b8c9d0f Delete 3000 lines. Nobody noticed. Best day of my career
+39-c9d0e1a Security fix: removed the password from the README
 ```
 
-Line 5, `retrying payment-gateway request (attempt 2/3)`, is a network failure but is dropped by `-v`.
+"Nobody noticed", asked in Japanese, with one line of context on each side.
 
-### Mixed: (finance AND negative) OR weather
+### The whole log, filtered for despair
 
 ```sh
-$ ./semgrep -n -e "about economy, finance or markets" -a "the news is negative or a decline" -e "about weather" tests/corpus.txt
-36:今日の天気は晴れ、最高気温は28度です
-43:Stock prices fell 3% after the earnings report missed expectations.
-48:明日は雨の予報なので傘を持っていきます
-3/51 lines, 2 requests, 5673 input tokens
+$ ./semgrep -e "the commit message is really a cry for help" tests/commits.txt
+d4e5f6a It works now. I don't know why. Do not touch.
+f6a7b8c Friday 18:55 deploy, what could go wrong
+c9d0e1f Tests pass locally, so it's CI's fault
+a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん
+b4c5d6e とりあえず動くようにした。理由は不明
+a9b0c1d Hab Prod kaputt gemacht, sorry Leute
+d2e3f4a Nothing broke. Everything broke. Reverting.
+c3d4e5a 3am fix, will explain in the morning
+f6a7b8d Fix memory leak by restarting the server every hour
+d0e1f2b Security fix: removed the password from git history (please rotate it)
+b4c5d6f Prepare for the demo. Please work.
 ```
 
-`The central bank raised interest rates` is about finance but not a decline, so it is out.
-
-### Strictness presets
-
-```sh
-$ ./semgrep --level strict -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
-33:DROP TABLE sessions;
-49:API keys must never be committed to the repository.
-
-$ ./semgrep --level loose -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
-11:2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
-16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
-33:DROP TABLE sessions;
-49:API keys must never be committed to the repository.
-```
-
-`strict` keeps only what the model is sure about. `loose` also pulls in the expired certificate and the suspicious-billing ticket.
+Try it on your own repository: `git log --oneline | semgrep -e "a cry for help"`.
 
 ### Recursive search and file names only
 

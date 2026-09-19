@@ -141,84 +141,105 @@ echo 'TYPESAFE_API_KEY=your-key' > .env               # プロジェクト単位
 
 ## 例
 
-例はすべて [`tests/corpus.txt`](tests/corpus.txt) に対するものです。サーバログ、日英の問い合わせ、
-ソースコード、SQL、雑談が混ざった 51 行のファイルです。
+例はすべて [`tests/commits.txt`](tests/commits.txt) に対するものです。いろいろあったプロジェクトの git log で、
+45 件のコミットメッセージに日本語・ドイツ語・フランス語が少し混ざっています。
 
-### 概念で探す。言語は問わない
-
-```sh
-$ ./semgrep -n -e "customer is angry or frustrated" tests/corpus.txt
-14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
-16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
-18:I want my money back. The item arrived broken and customer service ignored me.
-21:Your product ruined my weekend. Never buying from you again.
-23:This is the third time I'm writing. Nobody has replied to my previous emails.
-5/51 lines, 2 requests, 3225 input tokens
-```
-
-どの行にも「angry」「frustrated」という語はありません。英語の意味で日本語の行も拾えています。
-
-### OR で 2 つの意味。`-p` で確率も見る
+### 白状しているコミットを探す
 
 ```sh
-$ ./semgrep -n -p -e "返金の要求" -e "配送先の変更依頼" tests/corpus.txt
-14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた	[0.97 0.02]
-17:ユーザー高橋さんからの問い合わせ: 配送先の住所を変更したいのですが	[0.01 0.96]
-18:I want my money back. The item arrived broken and customer service ignored me.	[0.96 0.01]
-22:Can I change the delivery address for order #8821?	[0.02 0.96]
-4/51 lines, 2 requests, 4602 input tokens
+$ ./semgrep -e "the author admits they do not understand why the code works" tests/commits.txt
+d4e5f6a It works now. I don't know why. Do not touch.
+b4c5d6e とりあえず動くようにした。理由は不明
+a3b4c5e README: add "works on my machine" badge
 ```
 
-末尾の括弧が、指定した順に各意味の確率です。閾値を決めるときの目安になります。
+この 3 行を 1 つのキーワードで拾うことはできません。
 
-`--color`（端末では既定で有効）を付けると、確率が閾値に対して色分けされます。
-`-t` 以上は緑、`-T` 未満は赤、あいだは黄です。行番号とファイル名は grep と同じ配色です。
+### 日本語で聞いて、英語とドイツ語を見つける
+
+```sh
+$ ./semgrep -e "本番環境を壊した" tests/commits.txt
+a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん
+a9b0c1d Hab Prod kaputt gemacht, sorry Leute
+```
+
+日本語の謝罪と、ドイツ語の謝罪（「本番を壊しちゃった、ごめんみんな」）が並びます。
+
+### AND NOT。人のせいにして、そのままの人
+
+```sh
+$ ./semgrep -e "someone is blamed for the problem" -v "the author takes responsibility" tests/commits.txt
+a5b6c7d Blame the intern for the migration script
+```
+
+ログの次のコミットは `Actually it was me. Fix migration script` です。責任の話ではあるものの、作者が引き受けているので `-v` が落とします。
+
+### AND。修正を修正する修正
+
+```sh
+$ ./semgrep -e "a bug fix" -a "the fix is itself broken or fixes another fix" tests/commits.txt
+b8c9d0e Fix the fix
+e7f8a9b Bump version to 1.0.1 (hotfix for 1.0.0)
+f8a9b0c Bump version to 1.0.2 (hotfix for the hotfix)
+f4a5b6c Fix dark mode (was actually light mode)
+f2a3b4d Fix: the bug was in the fix for the previous fix
+```
+
+`Fix typo in README` や `Fix migration script` は修正ですが「修正の修正」ではないので外れます。
+
+### 数えてから、`-p` で確率を見る
+
+```sh
+$ ./semgrep -c -e "the author sounds like they need sleep or a vacation" tests/commits.txt
+8
+
+$ ./semgrep -n -p -e "the author sounds like they need sleep or a vacation" tests/commits.txt
+4:d4e5f6a It works now. I don't know why. Do not touch.	[0.59]
+6:f6a7b8c Friday 18:55 deploy, what could go wrong	[0.67]
+10:d0e1f2a Add tests (they fail, but that's a tomorrow problem)	[0.50]
+13:a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん	[0.57]
+22:d2e3f4a Nothing broke. Everything broke. Reverting.	[0.55]
+33:c3d4e5a 3am fix, will explain in the morning	[0.82]
+36:f6a7b8d Fix memory leak by restarting the server every hour	[0.65]
+38:b8c9d0f Delete 3000 lines. Nobody noticed. Best day of my career	[0.51]
+```
+
+末尾の括弧が、指定した順に各意味の確率です。午前 3 時の修正が圧勝で、残りは閾値 0.5 の際どいところに並んでいます。
+これが `-p` の使いどころで、`-t 0.6` にすれば金曜デプロイ、3am fix、毎時再起動の 3 つだけが残ります。
+`--color`（端末では既定で有効）を付けると、確率が閾値に対して色分けされます。`-t` 以上は緑、`-T` 未満は赤、あいだは黄です。
+行番号とファイル名は grep と同じ配色です。
 
 ![色付き出力: 行番号は緑、確率は緑または赤](docs/color.svg)
 
-### AND NOT。ネットワーク障害のうちリトライ中のものを除く
+### 文脈行つき、日本語で問い合わせ
 
 ```sh
-$ ./semgrep -n -e "ネットワークやリモート接続の障害" -v "a retry is happening or was attempted" tests/corpus.txt
-4:2026-09-19 08:02:30 ERROR connection reset by peer while calling payment-gateway
-6:2026-09-19 08:02:35 ERROR timeout after 5000ms waiting for payment-gateway
-9:2026-09-19 08:10:44 ERROR DNS lookup failed for api.example.com
-11:2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
-13:network unreachable: no route to host 10.0.0.5
-30:except ConnectionError as e:
-31:    logger.error("upstream unreachable: %s", e)
-7/51 lines, 2 requests, 5112 input tokens
+$ ./semgrep -n -C 1 -e "誰も気づかなかった" tests/commits.txt
+37-a7b8c9e Add comment explaining the hack. The comment is longer than the hack
+38:b8c9d0f Delete 3000 lines. Nobody noticed. Best day of my career
+39-c9d0e1a Security fix: removed the password from the README
 ```
 
-5 行目の `retrying payment-gateway request (attempt 2/3)` はネットワーク障害ですが、`-v` で落ちています。
+「誰も気づかなかった」を日本語で聞き、前後 1 行を付けて表示しています。
 
-### 混合。(金融 AND 悪いニュース) OR 天気
+### ログ全体を「絶望」でフィルタする
 
 ```sh
-$ ./semgrep -n -e "about economy, finance or markets" -a "the news is negative or a decline" -e "about weather" tests/corpus.txt
-36:今日の天気は晴れ、最高気温は28度です
-43:Stock prices fell 3% after the earnings report missed expectations.
-48:明日は雨の予報なので傘を持っていきます
-3/51 lines, 2 requests, 5673 input tokens
+$ ./semgrep -e "the commit message is really a cry for help" tests/commits.txt
+d4e5f6a It works now. I don't know why. Do not touch.
+f6a7b8c Friday 18:55 deploy, what could go wrong
+c9d0e1f Tests pass locally, so it's CI's fault
+a3b4c5d 金曜の夜にデプロイしたら本番が落ちた。すまん
+b4c5d6e とりあえず動くようにした。理由は不明
+a9b0c1d Hab Prod kaputt gemacht, sorry Leute
+d2e3f4a Nothing broke. Everything broke. Reverting.
+c3d4e5a 3am fix, will explain in the morning
+f6a7b8d Fix memory leak by restarting the server every hour
+d0e1f2b Security fix: removed the password from git history (please rotate it)
+b4c5d6f Prepare for the demo. Please work.
 ```
 
-`The central bank raised interest rates` は金融の話ですが下落ではないので外れています。
-
-### 厳しさのプリセット
-
-```sh
-$ ./semgrep --level strict -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
-33:DROP TABLE sessions;
-49:API keys must never be committed to the repository.
-
-$ ./semgrep --level loose -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
-11:2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
-16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
-33:DROP TABLE sessions;
-49:API keys must never be committed to the repository.
-```
-
-`strict` はモデルが確信している行だけ、`loose` は期限切れ証明書や身に覚えのない請求まで拾います。
+自分のリポジトリで試すなら `git log --oneline | semgrep -e "助けを求めている"` です。
 
 ### ディレクトリを再帰検索、ファイル名だけ表示
 
