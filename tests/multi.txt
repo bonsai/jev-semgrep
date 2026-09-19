@@ -1,0 +1,14 @@
+Je veux être remboursé, le produit est arrivé cassé.
+Merci beaucoup, le support a été excellent.
+Я требую вернуть деньги, товар не работает.
+Спасибо, проблема решена, всё отлично.
+Ich möchte mein Geld zurück, das Gerät ist defekt.
+Vielen Dank für die schnelle Hilfe!
+Quiero un reembolso, el paquete llegó vacío.
+Gracias, todo funcionó perfectamente.
+我要求退款，商品坏了。
+谢谢，问题已经解决了。
+환불해 주세요. 제품이 고장났어요.
+감사합니다, 문제가 해결되었어요.
+Le serveur ne répond plus, connexion refusée sur le port 443.
+Сервер недоступен: тайм-аут соединения с базой данных.

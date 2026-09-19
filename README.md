@@ -15,7 +15,7 @@ and applies a threshold.
 - Zero dependencies. One file, Node.js 20.12+ and `fetch`.
 - Fast. 30 lines go into one request, requests run 8 at a time. A 210-line file finishes in under a second.
 - Meanings combine with AND / OR / NOT.
-- **Cross-lingual.** Write the meaning in Japanese and find English lines, or the other way round. No translation step, same speed, same cost.
+- **Language-agnostic.** The meaning and the text can each be in any language. A Japanese meaning finds French, Russian, Chinese and Korean lines alike. No translation step, same speed, same cost.
 
 ## Search across languages
 
@@ -39,6 +39,28 @@ A **Japanese** meaning finds **English** lines, with the same confidence as the 
 $ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
 14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた	[0.97]
 18:I want my money back. The item arrived broken and customer service ignored me.	[0.95]
+```
+
+It is not a Japanese/English feature. `tests/multi.txt` holds refund requests and thank-you notes in French,
+Russian, German, Spanish, Chinese and Korean. One Japanese meaning finds all six refund requests; a Russian
+meaning does the same:
+
+```sh
+$ ./semgrep -n -p -e "顧客が返金を求めている" tests/multi.txt
+1:Je veux être remboursé, le produit est arrivé cassé.	[0.98]
+3:Я требую вернуть деньги, товар не работает.	[0.97]
+5:Ich möchte mein Geld zurück, das Gerät ist defekt.	[0.97]
+7:Quiero un reembolso, el paquete llegó vacío.	[0.97]
+9:我要求退款，商品坏了。	[0.97]
+11:환불해 주세요. 제품이 고장났어요.	[0.97]
+
+$ ./semgrep -n -p -e "клиент требует возврат денег" tests/multi.txt
+1:Je veux être remboursé, le produit est arrivé cassé.	[0.94]
+3:Я требую вернуть деньги, товар не работает.	[0.97]
+5:Ich möchte mein Geld zurück, das Gerät ist defekt.	[0.92]
+7:Quiero un reembolso, el paquete llegó vacío.	[0.89]
+9:我要求退款，商品坏了。	[0.92]
+11:환불해 주세요. 제품이 고장났어요.	[0.89]
 ```
 
 This makes semgrep useful for mixed-language logs and ticket dumps, and for teams whose members
