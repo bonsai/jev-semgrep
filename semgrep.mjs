@@ -160,13 +160,15 @@ const chunkLines = Number(opt.c);
 // 数値オプションの検証。-C=10 のような書き方は parseArgs が "=10" を値にするので、ここで弾く
 for (const [k, label] of [['t', '-t'], ['T', '-T'], ['c', '-c'], ['j', '-j'], ['A', '-A'], ['B', '-B'], ['C', '-C']])
   if (opt[k] !== undefined && !/^\d+(\.\d+)?$/.test(opt[k])) die(`${label}: invalid number '${opt[k]}' (write ${label} 10 or ${label}10, not ${label}=10)`);
+if (chunkLines < 1) die('-c must be at least 1');
+if (Number(opt.j) < 1) die('-j must be at least 1');
 
 // -r ならディレクトリを展開する。.git / node_modules とバイナリ (先頭 8KB に NUL) は飛ばす。
 function expand(path) {
   if (!statSync(path).isDirectory()) return [path];
   if (!opt.r) die(`${path}: Is a directory (use -r)`);
   return readdirSync(path, { withFileTypes: true })
-    .filter(d => !['.git', 'node_modules'].includes(d.name))
+    .filter(d => !['.git', 'node_modules'].includes(d.name) && !d.isSymbolicLink()) // リンク循環を避ける
     .sort((a, b) => a.name.localeCompare(b.name))
     .flatMap(d => expand(join(path, d.name)));
 }
@@ -205,12 +207,19 @@ async function evaluate(chunk) {
     questions[`${id(i)}_${m}`] = { type: 'noul', instructions: `Does line ${id(i)} match the meaning: "${text}"?` };
   }));
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch('https://api.typesafe.ai/v1/systemone', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'jev-latest', state, questions }),
-    });
-    if ((res.status === 429 || res.status === 529) && attempt < 6) {
+    let res;
+    try {
+      res = await fetch('https://api.typesafe.ai/v1/systemone', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'jev-latest', state, questions }),
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (e) {
+      if (attempt < 6) { await sleep(500 * 2 ** attempt); continue; } // 接続断・タイムアウトも再試行
+      throw new Error(`typesafe: ${e.cause?.message ?? e.message}`);
+    }
+    if ((res.status === 429 || res.status === 529 || res.status >= 500) && attempt < 6) {
       await sleep(500 * 2 ** attempt);
       continue;
     }
@@ -274,4 +283,5 @@ for (const file of targets) {
   }
 }
 console.error(`${matched}/${lines.length} lines, ${chunks.length} requests, ${usedTokens} input tokens`);
-process.exit(matched ? 0 : 1);
+// process.exit() だとパイプ先への stdout が書き切られる前に落ちて出力が欠けるので exitCode で終える
+process.exitCode = matched ? 0 : 1;
