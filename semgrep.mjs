@@ -4,7 +4,6 @@
 //   -e は OR で並び、-a / -v は直前の -e 項に AND / AND NOT で連結する。(A and B and not C) or D。
 //   意味の先頭に ! を付けるとその意味だけ否定できる。-e A -e '!B' は A or not B。
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 
@@ -27,7 +26,8 @@ const { values: opt, positionals: files, tokens } = parseArgs({
     l: { type: 'boolean', default: false }, // 一致したファイル名だけ
     t: { type: 'string' }, // 肯定の閾値: p >= t で一致 (既定はプリセット)
     T: { type: 'string' }, // 否定の閾値: p < T で「〜でない」と判定 (既定はプリセット)
-    c: { type: 'string', default: '30' }, // 1リクエストあたりの行数
+    chunk: { type: 'string', default: '30' }, // 1リクエストあたりの行数
+    c: { type: 'boolean', default: false }, // ファイルごとの一致行数 (grep -c)
     j: { type: 'string', default: '8' }, // 並列リクエスト数
     A: { type: 'string' }, // 一致行の後ろ N 行
     B: { type: 'string' }, // 一致行の前 N 行
@@ -61,7 +61,8 @@ grep by meaning, powered by Jev (TypeSafe System One). Reads stdin when FILE is 
   -A NUM       print NUM lines of trailing context after each match (context lines use - as separator)
   -B NUM       print NUM lines of leading context before each match
   -C NUM       print NUM lines of context before and after (-A NUM -B NUM)
-  -c LINES     lines per request (default 30)
+  -c           print only a count of matching lines per file (like grep -c)
+  --chunk=LINES lines per request (default 30)
   -j N         concurrent requests (default 8)
   -n           print line numbers
   -p           print each meaning's probability at the end of the line (for tuning thresholds)
@@ -102,7 +103,8 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -A NUM       一致行の後ろ NUM 行も表示 (grep と同じ。文脈行の区切りは - )
   -B NUM       一致行の前 NUM 行も表示
   -C NUM       前後 NUM 行を表示 (-A NUM -B NUM)
-  -c LINES     1 リクエストにまとめる行数 (既定 30)
+  -c           一致した行数だけをファイルごとに表示 (grep -c 相当)
+  --chunk=LINES 1 リクエストにまとめる行数 (既定 30)
   -j N         同時リクエスト数 (既定 8)
   -n           行番号を付ける
   -p           各意味の確率を行末に表示 (閾値調整用)
@@ -156,11 +158,12 @@ const level = levels[opt.level];
 if (!level) die(`--level must be one of ${Object.keys(levels).join(', ')}`);
 const tPos = opt.t === undefined ? level[0] : Number(opt.t);
 const tNeg = opt.T === undefined ? level[1] : Number(opt.T);
-const chunkLines = Number(opt.c);
+const chunkLines = Number(opt.chunk);
 // 数値オプションの検証。-C=10 のような書き方は parseArgs が "=10" を値にするので、ここで弾く
-for (const [k, label] of [['t', '-t'], ['T', '-T'], ['c', '-c'], ['j', '-j'], ['A', '-A'], ['B', '-B'], ['C', '-C']])
+for (const [k, label] of [['t', '-t'], ['T', '-T'], ['chunk', '--chunk'], ['j', '-j'], ['A', '-A'], ['B', '-B'], ['C', '-C']])
   if (opt[k] !== undefined && !/^\d+(\.\d+)?$/.test(opt[k])) die(`${label}: invalid number '${opt[k]}' (write ${label} 10 or ${label}10, not ${label}=10)`);
-if (chunkLines < 1) die('-c must be at least 1');
+if (chunkLines < 1) die('--chunk must be at least 1');
+if (tPos < 0 || tPos > 1 || tNeg < 0 || tNeg > 1) die('-t / -T must be between 0 and 1');
 if (Number(opt.j) < 1) die('-j must be at least 1');
 
 // -r ならディレクトリを展開する。.git / node_modules とバイナリ (先頭 8KB に NUL) は飛ばす。
@@ -170,7 +173,7 @@ function expand(path) {
   return readdirSync(path, { withFileTypes: true })
     .filter(d => !['.git', 'node_modules'].includes(d.name) && !d.isSymbolicLink()) // リンク循環を避ける
     .sort((a, b) => a.name.localeCompare(b.name))
-    .flatMap(d => expand(join(path, d.name)));
+    .flatMap(d => expand(path.endsWith('/') ? path + d.name : `${path}/${d.name}`)); // join() は ./ を落とすので使わない
 }
 const targets = (files.length ? files : [opt.r ? '.' : '-']).flatMap(f => (f === '-' ? [f] : expand(f)));
 const sources = new Map(); // file -> 全行 (文脈表示用。空行も含む)
@@ -266,6 +269,7 @@ for (const file of targets) {
   const h = hits.get(file);
   if (!h) continue;
   if (opt.l) { console.log(paint(35, file)); continue; }
+  if (opt.c) { console.log((multi ? paint(35, file) + paint(36, ':') : '') + h.size); continue; }
   const src = sources.get(file);
   let last = 0; // このファイルで出力済みの最終行番号
   for (const no of [...h.keys()].sort((a, b) => a - b)) {
