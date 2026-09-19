@@ -252,7 +252,7 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
                file and line number use grep's colors; with -p, probabilities are
                green at or above the positive threshold, red below the negative one,
                yellow in between. NO_COLOR is honored
-  -h, --help   this help
+  -h, --help   this help (Japanese when LANG / LC_ALL / LC_MESSAGES starts with ja)
 ```
 
 Without FILE, stdin is read. With several files, output is prefixed with `file:`.

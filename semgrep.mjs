@@ -38,8 +38,49 @@ const { values: opt, positionals: files, tokens } = parseArgs({
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
-if (opt.help) {
-  console.log(`usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
+// --help: ロケールが ja なら日本語、それ以外は英語
+const HELP_EN = `usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
+grep by meaning, powered by Jev (TypeSafe System One). Reads stdin when FILE is omitted.
+
+  -e MEANING   lines matching this meaning (several -e are OR'd)
+  -a MEANING   AND onto the preceding -e term.      -e A -a B -e C  =  (A and B) or C
+  -v MEANING   AND NOT onto the preceding -e term.  -e A -v B       =  A and not B
+               At the front it is a bare negation.  -v B            =  not B  (like grep -v)
+  !MEANING     a leading ! negates just that meaning, in -e / -a / -v alike
+               -e A -e '!B'  =  A or not B.   -a '!C' is the same as -v C
+  --level=LEVEL strictness preset, sets both thresholds (default normal)
+                 loose  : -t 0.3 -T 0.7  catch more, accept some noise
+                 normal : -t 0.5 -T 0.5
+                 strict : -t 0.7 -T 0.3  only confident matches
+  -t THRESH    positive threshold: match when probability >= THRESH (overrides --level)
+  -T THRESH    negative threshold: "not X" when probability < THRESH (overrides --level)
+               with -t 0.6 -T 0.3 a line at 0.3..0.6 matches neither X nor not-X
+  -r           recurse into directories (current directory when FILE is omitted);
+               skips .git, node_modules and binary files
+  -l           print only the names of files with a match, not the lines
+  -A NUM       print NUM lines of trailing context after each match (context lines use - as separator)
+  -B NUM       print NUM lines of leading context before each match
+  -C NUM       print NUM lines of context before and after (-A NUM -B NUM)
+  -c LINES     lines per request (default 30)
+  -j N         concurrent requests (default 8)
+  -n           print line numbers
+  -p           print each meaning's probability at the end of the line (for tuning thresholds)
+  --color[=WHEN] auto (default: color when stdout is a terminal) / always / never; bare --color means auto
+               file and line number use grep's colors; with -p, probabilities are green at or above
+               the positive threshold, red below the negative one, yellow in between. NO_COLOR is honored
+  -h, --help   this help (Japanese when LANG / LC_ALL / LC_MESSAGES starts with ja)
+
+Exit status: 0 matched / 1 no match / 2 error
+
+API key (TypeSafe / Jev):
+  Get a key at https://console.typesafe.ai/ and provide it one of these ways, searched in this order:
+    export TYPESAFE_API_KEY=your-key                         environment variable
+    SEMGREP_ENV=/path/to/.env semgrep ...                    any .env file
+    ./.env                                                   current directory (per project)
+    ~/.config/semgrep/.env                                   per user
+  The .env file is one line:  TYPESAFE_API_KEY=your-key
+  e.g.  mkdir -p ~/.config/semgrep && echo 'TYPESAFE_API_KEY=your-key' > ~/.config/semgrep/.env`;
+const HELP_JA = `usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
 jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE 省略時は stdin。
 
   -e MEANING   この意味に合う行 (複数指定は OR)
@@ -68,7 +109,7 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   --color[=WHEN] 色付け。auto (端末なら付ける、既定) / always / never。=WHEN 省略時は auto
                ファイル名・行番号は grep と同じ配色。-p の確率は閾値以上を緑、
                否定側の閾値未満を赤、あいだを黄で表示。NO_COLOR にも従う
-  -h, --help   このヘルプ
+  -h, --help   このヘルプ (LANG / LC_ALL / LC_MESSAGES が ja 以外なら英語)
 
 終了コード: 一致あり 0 / なし 1 / 引数エラー 2
 
@@ -79,7 +120,10 @@ API キーの設定 (TypeSafe / Jev):
     ./.env                                                   カレントディレクトリ (プロジェクト単位)
     ~/.config/semgrep/.env                                   ユーザー単位
   .env の中身は 1 行:  TYPESAFE_API_KEY=your-key
-  例:  mkdir -p ~/.config/semgrep && echo 'TYPESAFE_API_KEY=your-key' > ~/.config/semgrep/.env`);
+  例:  mkdir -p ~/.config/semgrep && echo 'TYPESAFE_API_KEY=your-key' > ~/.config/semgrep/.env`;
+if (opt.help) {
+  const locale = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || '';
+  console.log(locale.startsWith('ja') ? HELP_JA : HELP_EN);
   process.exit(0);
 }
 
