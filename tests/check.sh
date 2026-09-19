@@ -24,4 +24,11 @@ $J -r -l -e 'customer is asking for a refund' . 2>/dev/null | grep -qx './fixtur
 $J -n -C 1 -e 'customer is asking for a refund' fixture.txt 2>/dev/null | grep -qx '6-2026-09-19 08:02:35 ERROR timeout after 5000ms waiting for payment-gateway'
 if $J -t 1.5 -e x fixture.txt 2>/dev/null; then exit 1; fi
 if $J -C=1 -e x fixture.txt 2>/dev/null; then exit 1; fi
+# -c は不一致ファイルにも 0 を出す
+[ "$($J -c -e 'customer is asking for a refund' fixture.txt contrast.txt 2>/dev/null | tr '\n' ' ')" = "fixture.txt:1 contrast.txt:2 " ]
+[ "$(printf 'x\n\ny\n' | $J -c -e 'about cats' 2>/dev/null)" = "0" ]
+# 空行は -v に当たり -e に当たらない
+[ "$(printf 'the cat sleeps\n\nthe dog barks\n' | $J -v 'about cats' 2>/dev/null | wc -l | tr -d ' ')" = "2" ]
+# 空の意味はエラー
+if $J -e '' fixture.txt >/dev/null 2>&1; then exit 1; elif [ $? -ne 2 ]; then exit 1; fi
 echo OK

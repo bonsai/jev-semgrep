@@ -24,7 +24,8 @@
   "files": [
     "semgrep.mjs",
     "README.md",
-    "README.ja.md"
+    "README.ja.md",
+    "docs/"
   ],
   "engines": {
     "node": ">=20.12"

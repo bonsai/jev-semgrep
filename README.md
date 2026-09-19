@@ -236,8 +236,10 @@ docs/tickets/a.txt
 docs/tickets/sub/b.txt
 ```
 
-`-r` walks directories in sorted order and skips `.git`, `node_modules` and binary files (a NUL byte in the
-first 8 KB). Each line still costs API tokens, so point it at a directory you mean to scan. `-l` prints each
+`-r` walks directories in sorted order and skips `.git`, `node_modules`, `.ssh`, `.aws`, `.gnupg`, binary files
+(a NUL byte in the first 8 KB) and files that usually hold secrets (`.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`,
+`id_rsa` and friends). **Every line that is searched is sent to the TypeSafe API**, so point `-r` at a directory
+you mean to scan. A file named explicitly on the command line is always searched, even if it matches the skip list. `-l` prints each
 matching file once, in the order matches are found, and works with or without `-r`. `-c` prints the number of
 matching lines per file instead.
 
@@ -286,7 +288,7 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
 ```
 
 Without FILE, stdin is read. With several files, output is prefixed with `file:`.
-Exit codes follow grep: 0 matched, 1 no match, 2 bad arguments.
+Exit codes follow grep: 0 matched, 1 no match, 2 error (bad arguments, unreadable file, API failure).
 
 ### Expression grammar
 
@@ -335,6 +337,8 @@ The result is written to `tests/report.md`. Latest: precision 0.94, recall 0.98.
 
 ## Limits
 
+- Every searched line is sent to api.typesafe.ai. Do not run it over files you would not upload there.
+- Blank lines are not sent; they count as probability 0 for every meaning, so `-v X` prints them and `-e X` never does.
 - Lines are truncated to 2,000 characters before sending.
 - The maximum number of questions per request is undocumented; 420 worked.
 - 429 / 529 are retried up to 6 times with exponential backoff.
