@@ -270,6 +270,13 @@ Then, inside Claude Code:
 /uehaj:semgrep 未テストのまま入った修正 git log --oneline -200
 ```
 
+Claude Code installs plugins, not single skills. If you want just this one skill, the
+[skills CLI](https://skills.sh/) copies it into `~/.claude/skills/` and it is invoked as `/semgrep`:
+
+```sh
+npx skills add uehaj/skills --skill semgrep -a claude-code -g
+```
+
 The skill writes the meaning in English, picks `-e` / `-a` / `-v` for AND / OR / NOT, adds `-n`, narrows large
 directories to files worth paying for, and re-runs with `--level loose` or `strict` when the first result looks off.
 The API key is read the same way as on the command line (`TYPESAFE_API_KEY`, `./.env`, `~/.config/semgrep/.env`).

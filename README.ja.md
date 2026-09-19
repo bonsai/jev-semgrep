@@ -265,6 +265,13 @@ claude plugin install uehaj@uehaj
 /uehaj:semgrep 未テストのまま入った修正 git log --oneline -200
 ```
 
+Claude Code のインストール単位はプラグインで、スキル単体は選べません。このスキルだけ欲しいときは
+[skills CLI](https://skills.sh/) が `~/.claude/skills/` にコピーしてくれ、その場合は `/semgrep` で呼びます。
+
+```sh
+npx skills add uehaj/skills --skill semgrep -a claude-code -g
+```
+
 スキルは意味を英語で書き、AND / OR / NOT を `-e` / `-a` / `-v` に振り分け、`-n` を付け、大きなディレクトリは
 課金に見合うファイルに絞り、最初の結果が怪しければ `--level loose` や `strict` で引き直します。
 API キーの読み方はコマンドラインと同じです（`TYPESAFE_API_KEY`、`./.env`、`~/.config/semgrep/.env`）。
