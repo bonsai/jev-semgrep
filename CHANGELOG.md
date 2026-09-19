@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/) (until 1.0, option ch
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-20
+
 _(includes what was briefly tagged v0.2.1; that tag was never published and has been removed)_
 
 ### Changed
@@ -72,7 +74,8 @@ First release as `@uehaj/semgrep`.
 - Errors are one line plus exit code 2, no stack traces.
 - LLM-as-judge test (`tests/judge.mts`) with threshold sweep; self-check (`tests/check.sh`).
 
-[Unreleased]: https://github.com/uehaj/jev-semgrep/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/uehaj/jev-semgrep/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/uehaj/jev-semgrep/compare/v0.2.0...v0.2.2
 [0.2.0]: https://github.com/uehaj/jev-semgrep/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/uehaj/jev-semgrep/compare/40b0d5d...v0.1.1
 [0.1.0]: https://github.com/uehaj/jev-semgrep/commits/40b0d5d
