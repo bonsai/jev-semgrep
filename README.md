@@ -238,7 +238,8 @@ docs/tickets/sub/b.txt
 
 `-r` walks directories in sorted order and skips `.git`, `node_modules` and binary files (a NUL byte in the
 first 8 KB). Each line still costs API tokens, so point it at a directory you mean to scan. `-l` prints each
-matching file once, in the order matches are found, and works with or without `-r`.
+matching file once, in the order matches are found, and works with or without `-r`. `-c` prints the number of
+matching lines per file instead.
 
 ### Everything that is *not* something
 
@@ -272,7 +273,8 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
   -A NUM       print NUM lines of trailing context after each match (context lines use - as separator)
   -B NUM       print NUM lines of leading context before each match
   -C NUM       print NUM lines of context before and after (-A NUM -B NUM)
-  -c LINES     lines per request (default 30)
+  -c           print only a count of matching lines per file (like grep -c)
+  --chunk=LINES lines per request (default 30)
   -j N         concurrent requests (default 8)
   -n           print line numbers
   -p           print each meaning's probability at the end of the line
