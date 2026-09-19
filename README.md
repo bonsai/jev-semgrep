@@ -186,7 +186,7 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
                At the front it is a bare negation.  -v B            =  not B  (like grep -v)
   !MEANING     a leading ! negates just that meaning, in -e / -a / -v alike
                -e A -e '!B'  =  A or not B.   -a '!C' is the same as -v C
-  --level LEVEL strictness preset, sets both thresholds (default normal)
+  --level=LEVEL strictness preset, sets both thresholds (default normal)
                  loose  : -t 0.3 -T 0.7  catch more, accept some noise
                  normal : -t 0.5 -T 0.5
                  strict : -t 0.7 -T 0.3  only confident matches
@@ -195,6 +195,9 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
   -r           recurse into directories (current directory when FILE is omitted);
                skips .git, node_modules and binary files
   -l           print only the names of files with a match, not the lines
+  -A NUM       print NUM lines of trailing context after each match (context lines use - as separator)
+  -B NUM       print NUM lines of leading context before each match
+  -C NUM       print NUM lines of context before and after (-A NUM -B NUM)
                with -t 0.6 -T 0.3 a line at 0.3..0.6 matches neither X nor not-X
   -c LINES     lines per request (default 30)
   -j N         concurrent requests (default 8)

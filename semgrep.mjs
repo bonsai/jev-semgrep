@@ -29,6 +29,9 @@ const { values: opt, positionals: files, tokens } = parseArgs({
     T: { type: 'string' }, // 否定の閾値: p < T で「〜でない」と判定 (既定はプリセット)
     c: { type: 'string', default: '30' }, // 1リクエストあたりの行数
     j: { type: 'string', default: '8' }, // 並列リクエスト数
+    A: { type: 'string' }, // 一致行の後ろ N 行
+    B: { type: 'string' }, // 一致行の前 N 行
+    C: { type: 'string' }, // 前後 N 行
     n: { type: 'boolean', default: false }, // 行番号
     p: { type: 'boolean', default: false }, // 各意味の確率を表示
     color: { type: 'string', default: 'auto' }, // auto / always / never
@@ -45,7 +48,7 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
                先頭に置けば単独の否定。-v B は not B (grep -v 相当)
   !MEANING     -e / -a / -v のどこでも、先頭に ! を付けるとその意味だけ否定
                -e A -e '!B' は A or not B。-a '!C' は -v C と同じ
-  --level LEVEL 厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
+  --level=LEVEL 厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
                  loose  : -t 0.3 -T 0.7  多少あやしくても拾う
                  normal : -t 0.5 -T 0.5
                  strict : -t 0.7 -T 0.3  確信のある行だけ拾う
@@ -54,6 +57,9 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -r           ディレクトリを再帰的に探す (FILE 省略時はカレント)。.git と node_modules、
                バイナリファイルは飛ばす
   -l           一致した行ではなくファイル名だけを表示
+  -A NUM       一致行の後ろ NUM 行も表示 (grep と同じ。文脈行の区切りは - )
+  -B NUM       一致行の前 NUM 行も表示
+  -C NUM       前後 NUM 行を表示 (-A NUM -B NUM)
                -t 0.6 -T 0.3 なら 0.3〜0.6 の曖昧な行はどちらにも当たらない
   -c LINES     1 リクエストにまとめる行数 (既定 30)
   -j N         同時リクエスト数 (既定 8)
@@ -118,12 +124,14 @@ function expand(path) {
     .flatMap(d => expand(join(path, d.name)));
 }
 const targets = (files.length ? files : [opt.r ? '.' : '-']).flatMap(f => (f === '-' ? [f] : expand(f)));
-const lines = []; // { file, no, text }
+const sources = new Map(); // file -> 全行 (文脈表示用。空行も含む)
+const lines = []; // { file, no, text }  空行は API に送らない
 for (const file of targets) {
   const buf = readFileSync(file === '-' ? 0 : file);
   if (buf.subarray(0, 8192).includes(0)) continue;
   const src = buf.toString('utf8').split('\n');
   if (src.at(-1) === '') src.pop();
+  sources.set(file, src);
   src.forEach((text, i) => text.trim() && lines.push({ file, no: i + 1, text }));
 }
 
@@ -181,8 +189,8 @@ if (!['auto', 'always', 'never'].includes(opt.color)) die('--color must be auto,
 const paint = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
 const paintProb = x => paint(x >= tPos ? 32 : x < tNeg ? 31 : 33, x.toFixed(2));
 
-const multi = targets.length > 1;
-const seen = new Set(); // -l で表示済みのファイル
+// 一致行を file -> (行番号 -> 確率) に集めてから、ファイル順・行順に文脈つきで出力する。
+const hits = new Map();
 let matched = 0;
 for (const [ci, result] of results.entries()) {
   const probs = await result;
@@ -190,15 +198,33 @@ for (const [ci, result] of results.entries()) {
     const p = probs[i];
     if (!expr.some(term => term.every(([m, not]) => (not ? p[m] < tNeg : p[m] >= tPos)))) return;
     matched++;
-    if (opt.l) {
-      if (!seen.has(l.file)) { seen.add(l.file); console.log(paint(35, l.file)); }
-      return;
-    }
-    const sep = paint(36, ':');
-    const prefix = (multi ? paint(35, l.file) + sep : '') + (opt.n ? paint(32, l.no) + sep : '');
-    const tail = opt.p ? `\t[${p.map(paintProb).join(' ')}]` : '';
-    console.log(prefix + l.text + tail);
+    if (!hits.has(l.file)) hits.set(l.file, new Map());
+    hits.get(l.file).set(l.no, p);
   });
+}
+
+const after = Number(opt.A ?? opt.C ?? 0), before = Number(opt.B ?? opt.C ?? 0);
+const multi = targets.length > 1;
+let lastPrinted = null; // [file, 行番号]。文脈グループの切れ目に -- を出すため
+for (const file of targets) {
+  const h = hits.get(file);
+  if (!h) continue;
+  if (opt.l) { console.log(paint(35, file)); continue; }
+  const src = sources.get(file);
+  let last = 0; // このファイルで出力済みの最終行番号
+  for (const no of [...h.keys()].sort((a, b) => a - b)) {
+    const from = Math.max(no - before, last + 1), to = Math.min(no + after, src.length);
+    if ((after || before) && lastPrinted && (lastPrinted[0] !== file || from > last + 1)) console.log(paint(36, '--'));
+    for (let k = from; k <= to; k++) {
+      const p = h.get(k);
+      const sep = paint(36, p ? ':' : '-');
+      const prefix = (multi ? paint(35, file) + sep : '') + (opt.n ? paint(32, k) + sep : '');
+      const tail = opt.p && p ? `\t[${p.map(paintProb).join(' ')}]` : '';
+      console.log(prefix + src[k - 1] + tail);
+    }
+    last = Math.max(last, to);
+    lastPrinted = [file, to];
+  }
 }
 console.error(`${matched}/${lines.length} lines, ${chunks.length} requests, ${usedTokens} input tokens`);
 process.exit(matched ? 0 : 1);

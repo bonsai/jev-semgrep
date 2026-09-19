@@ -184,7 +184,7 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
                先頭に置けば単独の否定。-v B は not B (grep -v 相当)
   !MEANING     -e / -a / -v のどこでも、先頭に ! を付けるとその意味だけ否定
                -e A -e '!B' は A or not B。-a '!C' は -v C と同じ
-  --level LEVEL 厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
+  --level=LEVEL 厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
                  loose  : -t 0.3 -T 0.7  多少あやしくても拾う
                  normal : -t 0.5 -T 0.5
                  strict : -t 0.7 -T 0.3  確信のある行だけ拾う
@@ -193,6 +193,9 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
   -r           ディレクトリを再帰的に探す (FILE 省略時はカレント)。.git と node_modules、
                バイナリファイルは飛ばす
   -l           一致した行ではなくファイル名だけを表示
+  -A NUM       一致行の後ろ NUM 行も表示 (grep と同じ。文脈行の区切りは - )
+  -B NUM       一致行の前 NUM 行も表示
+  -C NUM       前後 NUM 行を表示 (-A NUM -B NUM)
                -t 0.6 -T 0.3 なら 0.3〜0.6 の曖昧な行はどちらにも当たらない
   -c LINES     1 リクエストにまとめる行数 (既定 30)
   -j N         同時リクエスト数 (既定 8)
