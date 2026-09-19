@@ -25,6 +25,7 @@ const { values: opt, positionals: files, tokens } = parseArgs({
     j: { type: 'string', default: '8' }, // 並列リクエスト数
     n: { type: 'boolean', default: false }, // 行番号
     p: { type: 'boolean', default: false }, // 各意味の確率を表示
+    color: { type: 'string', default: 'auto' }, // auto / always / never
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
@@ -49,6 +50,9 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -j N         同時リクエスト数 (既定 8)
   -n           行番号を付ける
   -p           各意味の確率を行末に表示 (閾値調整用)
+  --color=WHEN 色付け。auto (端末なら付ける、既定) / always / never
+               ファイル名・行番号は grep と同じ配色。-p の確率は閾値以上を緑、
+               否定側の閾値未満を赤、あいだを黄で表示。NO_COLOR にも従う
   -h, --help   このヘルプ
 
 終了コード: 一致あり 0 / なし 1 / 引数エラー 2
@@ -151,6 +155,11 @@ const results = chunks.map(async chunk => {
   try { return await evaluate(chunk); } finally { release(); }
 });
 
+const color = opt.color === 'always' || (opt.color === 'auto' && process.stdout.isTTY && !process.env.NO_COLOR);
+if (!['auto', 'always', 'never'].includes(opt.color)) die('--color must be auto, always or never');
+const paint = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
+const paintProb = x => paint(x >= tPos ? 32 : x < tNeg ? 31 : 33, x.toFixed(2));
+
 const multi = files.length > 1;
 let matched = 0;
 for (const [ci, result] of results.entries()) {
@@ -159,8 +168,9 @@ for (const [ci, result] of results.entries()) {
     const p = probs[i];
     if (!expr.some(term => term.every(([m, not]) => (not ? p[m] < tNeg : p[m] >= tPos)))) return;
     matched++;
-    const prefix = (multi ? `${l.file}:` : '') + (opt.n ? `${l.no}:` : '');
-    const tail = opt.p ? `\t[${p.map(x => x.toFixed(2)).join(' ')}]` : '';
+    const sep = paint(36, ':');
+    const prefix = (multi ? paint(35, l.file) + sep : '') + (opt.n ? paint(32, l.no) + sep : '');
+    const tail = opt.p ? `\t[${p.map(paintProb).join(' ')}]` : '';
     console.log(prefix + l.text + tail);
   });
 }
