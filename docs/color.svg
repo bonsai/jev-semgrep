@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1093.7600000000002" height="225" font-family="SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
+<rect width="100%" height="100%" rx="6" fill="#1e1e2e"/>
+<g fill="#cdd6f4">
+<text x="16" y="29" xml:space="preserve">$ semgrep -n -p --color=always -t 0.6 -T 0.4 -e "ネットワークやリモート接続の障害" -e "customer is asking for a refund" tests/corpus.txt</text>
+<text x="16" y="49" xml:space="preserve"><tspan fill="#8ce99a">4</tspan><tspan fill="#66d9e8">:</tspan>2026-09-19 08:02:30 ERROR connection reset by peer while calling payment-gateway    [<tspan fill="#8ce99a">0.95</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+<text x="16" y="69" xml:space="preserve"><tspan fill="#8ce99a">5</tspan><tspan fill="#66d9e8">:</tspan>2026-09-19 08:02:31 INFO  retrying payment-gateway request (attempt 2/3)    [<tspan fill="#8ce99a">0.73</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+<text x="16" y="89" xml:space="preserve"><tspan fill="#8ce99a">6</tspan><tspan fill="#66d9e8">:</tspan>2026-09-19 08:02:35 ERROR timeout after 5000ms waiting for payment-gateway    [<tspan fill="#8ce99a">0.89</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+<text x="16" y="109" xml:space="preserve"><tspan fill="#8ce99a">9</tspan><tspan fill="#66d9e8">:</tspan>2026-09-19 08:10:44 ERROR DNS lookup failed for api.example.com    [<tspan fill="#8ce99a">0.81</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+<text x="16" y="129" xml:space="preserve"><tspan fill="#8ce99a">13</tspan><tspan fill="#66d9e8">:</tspan>network unreachable: no route to host 10.0.0.5    [<tspan fill="#8ce99a">0.96</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+<text x="16" y="149" xml:space="preserve"><tspan fill="#8ce99a">14</tspan><tspan fill="#66d9e8">:</tspan>ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた    [<tspan fill="#ff6b6b">0.02</tspan> <tspan fill="#8ce99a">0.99</tspan>]</text>
+<text x="16" y="169" xml:space="preserve"><tspan fill="#8ce99a">18</tspan><tspan fill="#66d9e8">:</tspan>I want my money back. The item arrived broken and customer service ignored me.    [<tspan fill="#ff6b6b">0.02</tspan> <tspan fill="#8ce99a">0.98</tspan>]</text>
+<text x="16" y="189" xml:space="preserve"><tspan fill="#8ce99a">30</tspan><tspan fill="#66d9e8">:</tspan>except ConnectionError as e:    [<tspan fill="#8ce99a">0.61</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+<text x="16" y="209" xml:space="preserve"><tspan fill="#8ce99a">31</tspan><tspan fill="#66d9e8">:</tspan>    logger.error("upstream unreachable: %s", e)    [<tspan fill="#8ce99a">0.91</tspan> <tspan fill="#ff6b6b">0.01</tspan>]</text>
+</g>
+</svg>

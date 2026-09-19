@@ -102,6 +102,11 @@ $ ./semgrep -n -p -e "返金の要求" -e "配送先の変更依頼" tests/corpu
 
 The bracket shows one probability per meaning, in the order given. Use it to pick a threshold.
 
+With `--color` (on by default in a terminal) the probabilities are colored against the thresholds:
+green at or above `-t`, red below `-T`, yellow in between. Line numbers and file names use grep's colors.
+
+![colored output: line numbers in green, probabilities in green or red](docs/color.svg)
+
 ### AND NOT: network errors, excluding retries
 
 ```sh

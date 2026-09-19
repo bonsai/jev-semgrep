@@ -3,6 +3,8 @@
 # 境界付近の行(5, 28)は run ごとに ±0.05 ぶれるので、確実な正例・負例だけを見る。
 set -e
 cd "$(dirname "$0")"
+# API キーはリポジトリ直下の .env (SEMGREP_ENV で上書き可)
+export SEMGREP_ENV="${SEMGREP_ENV:-$PWD/../.env}"
 J="node ../semgrep.mjs"
 out=$($J -n -e 'ネットワークやリモート接続の障害' -e 'customer is asking for a refund' fixture.txt 2>/dev/null | cut -d: -f1)
 for n in 4 6 7 13 30; do echo "$out" | grep -qx "$n"; done
