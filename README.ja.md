@@ -246,6 +246,29 @@ docs/tickets/sub/b.txt
 cat app.log | ./semgrep -e "デプロイが失敗した、またはロールバックされた"
 ```
 
+## Claude Code から使う
+
+semgrep を代わりに走らせてくれる Claude Code のスキルがあります。探したいものを言葉で書くと、式を組み立てて
+検索し、`file:line` 付きで該当行を報告します。[`uehaj/skills`](https://github.com/uehaj/skills) マーケットプレースの
+`uehaj` プラグインとして公開しています。
+
+```sh
+npm install -g @uehaj/semgrep              # 無ければスキルが npx で代用する
+claude plugin marketplace add uehaj/skills
+claude plugin install uehaj@uehaj
+```
+
+あとは Claude Code の中で次のように打ちます。
+
+```
+/uehaj:semgrep 返金を求めている問い合わせ tickets/*.txt
+/uehaj:semgrep 未テストのまま入った修正 git log --oneline -200
+```
+
+スキルは意味を英語で書き、AND / OR / NOT を `-e` / `-a` / `-v` に振り分け、`-n` を付け、大きなディレクトリは
+課金に見合うファイルに絞り、最初の結果が怪しければ `--level loose` や `strict` で引き直します。
+API キーの読み方はコマンドラインと同じです（`TYPESAFE_API_KEY`、`./.env`、`~/.config/semgrep/.env`）。
+
 ## 使い方
 
 ```

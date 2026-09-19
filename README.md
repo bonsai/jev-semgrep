@@ -251,6 +251,29 @@ matching lines per file instead.
 cat app.log | ./semgrep -e "the deploy failed or was rolled back"
 ```
 
+## Use it from Claude Code
+
+There is a Claude Code skill that runs semgrep for you: describe what you are looking for in plain words
+and it builds the expression, runs the search and reports `file:line` hits. It is published in the
+[`uehaj/skills`](https://github.com/uehaj/skills) marketplace as the `uehaj` plugin.
+
+```sh
+npm install -g @uehaj/semgrep              # the skill falls back to npx if this is missing
+claude plugin marketplace add uehaj/skills
+claude plugin install uehaj@uehaj
+```
+
+Then, inside Claude Code:
+
+```
+/uehaj:semgrep customer is asking for a refund tickets/*.txt
+/uehaj:semgrep 未テストのまま入った修正 git log --oneline -200
+```
+
+The skill writes the meaning in English, picks `-e` / `-a` / `-v` for AND / OR / NOT, adds `-n`, narrows large
+directories to files worth paying for, and re-runs with `--level loose` or `strict` when the first result looks off.
+The API key is read the same way as on the command line (`TYPESAFE_API_KEY`, `./.env`, `~/.config/semgrep/.env`).
+
 ## Usage
 
 ```
