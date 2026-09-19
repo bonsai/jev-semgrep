@@ -192,13 +192,13 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
                  strict : -t 0.7 -T 0.3  only confident matches
   -t THRESH    positive threshold: match when probability >= THRESH (overrides --level)
   -T THRESH    negative threshold: "not X" when probability < THRESH (overrides --level)
+               with -t 0.6 -T 0.3 a line at 0.3..0.6 matches neither X nor not-X
   -r           recurse into directories (current directory when FILE is omitted);
                skips .git, node_modules and binary files
   -l           print only the names of files with a match, not the lines
   -A NUM       print NUM lines of trailing context after each match (context lines use - as separator)
   -B NUM       print NUM lines of leading context before each match
   -C NUM       print NUM lines of context before and after (-A NUM -B NUM)
-               with -t 0.6 -T 0.3 a line at 0.3..0.6 matches neither X nor not-X
   -c LINES     lines per request (default 30)
   -j N         concurrent requests (default 8)
   -n           print line numbers
