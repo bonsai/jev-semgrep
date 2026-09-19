@@ -111,6 +111,10 @@ top-k か質問ごとの閾値調整が要ります。また索引を作らず�
 
 ## インストール
 
+使い方は 2 通りあります。コマンドラインツールとして使う（この節）か、Claude Code のスキルとして使う
+（後述の [Claude Code から使う](#claude-code-から使う)）か。スキルは `npx @uehaj/semgrep` に自動で切り替わるので、
+Claude Code からしか使わないならここでのインストールは不要で、API キーの設定だけで済みます。
+
 Node.js 20.12 以降が必要です。ほかの依存はありません。
 
 ```sh
@@ -253,10 +257,12 @@ semgrep を代わりに走らせてくれる Claude Code のスキルがあり�
 `uehaj` プラグインとして公開しています。
 
 ```sh
-npm install -g @uehaj/semgrep              # 無ければスキルが npx で代用する
 claude plugin marketplace add uehaj/skills
 claude plugin install uehaj@uehaj-skills
 ```
+
+コマンドラインツールを別途インストールする必要はありません。スキルは PATH に `semgrep` があればそれを、
+無ければ `npx @uehaj/semgrep` を使います。必要なのは API キーの設定だけです（[インストール](#インストール) を参照）。
 
 あとは Claude Code の中で次のように打ちます。
 

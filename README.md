@@ -115,6 +115,10 @@ repeated queries over a large, fixed corpus a vector index is cheaper and faster
 
 ## Install
 
+Two ways to use it: as a command-line tool (this section), or as a Claude Code skill
+(see [Use it from Claude Code](#use-it-from-claude-code) below). The skill falls back to `npx @uehaj/semgrep`,
+so if you only use it through Claude Code you can skip the install here entirely and just set the API key.
+
 Requires Node.js 20.12 or later. No other dependencies.
 
 ```sh
@@ -258,10 +262,12 @@ and it builds the expression, runs the search and reports `file:line` hits. It i
 [`uehaj/skills`](https://github.com/uehaj/skills) marketplace as the `uehaj` plugin.
 
 ```sh
-npm install -g @uehaj/semgrep              # the skill falls back to npx if this is missing
 claude plugin marketplace add uehaj/skills
 claude plugin install uehaj@uehaj-skills
 ```
+
+No separate install of the command-line tool is needed: the skill uses `semgrep` from your PATH if present,
+otherwise `npx @uehaj/semgrep`. Only the API key has to be set (see [Install](#install)).
 
 Then, inside Claude Code:
 
