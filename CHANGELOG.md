@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/) (until 1.0, option ch
 
 ## [Unreleased]
 
+_(includes what was briefly tagged v0.2.1; that tag was never published and has been removed)_
+
 ### Changed
 - README: install section now presents the two ways to use it (command-line tool, Claude Code skill),
   and notes that the skill falls back to `npx` so no install is needed for skill-only use.
@@ -16,8 +18,6 @@ versions follow [Semantic Versioning](https://semver.org/) (until 1.0, option ch
 
 ### Added
 - `tests/multi.txt`, `tests/fairy*.txt`, `tests/guild*.txt` corpora.
-
-## [0.2.1] - 2026-09-19 (tagged, not published to npm)
 
 ### Fixed
 - `tests/judge.mts` no longer depends on `-T 1.01`, which the new range check rejects.
@@ -72,8 +72,7 @@ First release as `@uehaj/semgrep`.
 - Errors are one line plus exit code 2, no stack traces.
 - LLM-as-judge test (`tests/judge.mts`) with threshold sweep; self-check (`tests/check.sh`).
 
-[Unreleased]: https://github.com/uehaj/jev-semgrep/compare/v0.2.1...HEAD
-[0.2.1]: https://github.com/uehaj/jev-semgrep/compare/v0.2.0...v0.2.1
+[Unreleased]: https://github.com/uehaj/jev-semgrep/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/uehaj/jev-semgrep/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/uehaj/jev-semgrep/compare/40b0d5d...v0.1.1
 [0.1.0]: https://github.com/uehaj/jev-semgrep/commits/40b0d5d
