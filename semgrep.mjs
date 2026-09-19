@@ -7,6 +7,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 
+// エラーは grep と同じく 1 行 + 終了コード 2。スタックトレースは出さない。
+const die = msg => { console.error(`semgrep: ${msg}\nTry 'semgrep --help' for more information.`); process.exit(2); };
+process.on('uncaughtException', e => die(e.message));
+
 const { values: opt, positionals: files, tokens } = parseArgs({
   allowPositionals: true,
   tokens: true,
@@ -67,14 +71,14 @@ if (!process.env.TYPESAFE_API_KEY) {
   if (found) process.loadEnvFile(found);
 }
 const apiKey = process.env.TYPESAFE_API_KEY;
-if (!apiKey) throw new Error('TYPESAFE_API_KEY is not set. Put it in ./.env or ~/.config/semgrep/.env');
+if (!apiKey) die('TYPESAFE_API_KEY is not set. Put it in ./.env or ~/.config/semgrep/.env');
 
 // 式: OR で並ぶ AND 項のリスト。項の要素は [意味の番号, 否定か]。meanings は重複なしの全意味。
 const expr = [];
 const meanings = [];
 for (const tk of tokens) {
   if (tk.kind !== 'option' || !['e', 'a', 'v'].includes(tk.name)) continue;
-  if (tk.name === 'a' && expr.length === 0) throw new Error('-a needs a preceding -e');
+  if (tk.name === 'a' && expr.length === 0) die('-a needs a preceding -e');
   const not = tk.value.startsWith('!'); // 個別の否定: "!MEANING"
   const text = not ? tk.value.slice(1) : tk.value;
   let m = meanings.indexOf(text);
@@ -83,10 +87,10 @@ for (const tk of tokens) {
   if (tk.name === 'e' || expr.length === 0) expr.push([lit]);
   else expr.at(-1).push(lit);
 }
-if (!meanings.length) throw new Error('no -e/-v MEANING given');
+if (!meanings.length) die('no -e MEANING given');
 const levels = { loose: [0.3, 0.7], normal: [0.5, 0.5], strict: [0.7, 0.3] };
 const level = levels[opt.l];
-if (!level) throw new Error(`-l must be one of ${Object.keys(levels).join(', ')}`);
+if (!level) die(`-l must be one of ${Object.keys(levels).join(', ')}`);
 const tPos = opt.t === undefined ? level[0] : Number(opt.t);
 const tNeg = opt.T === undefined ? level[1] : Number(opt.T);
 const chunkLines = Number(opt.c);
