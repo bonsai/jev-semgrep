@@ -49,7 +49,7 @@ $ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
 Node.js 20.12 以降が必要です。ほかの依存はありません。
 
 ```sh
-npm install -g jev-semgrep
+npm install -g @uehaj/semgrep
 semgrep --help
 ```
 

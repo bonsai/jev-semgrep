@@ -51,7 +51,7 @@ phrasing the meaning in English is the safer choice.
 Requires Node.js 20.12 or later. No other dependencies.
 
 ```sh
-npm install -g jev-semgrep
+npm install -g @uehaj/semgrep
 semgrep --help
 ```
 
