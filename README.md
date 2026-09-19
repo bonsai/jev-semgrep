@@ -138,11 +138,11 @@ $ ./semgrep -n -e "about economy, finance or markets" -a "the news is negative o
 ### Strictness presets
 
 ```sh
-$ ./semgrep -l strict -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
+$ ./semgrep --level strict -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
 33:DROP TABLE sessions;
 49:API keys must never be committed to the repository.
 
-$ ./semgrep -l loose -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
+$ ./semgrep --level loose -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
 11:2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
 16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
 33:DROP TABLE sessions;
@@ -150,6 +150,22 @@ $ ./semgrep -l loose -n -e "a security risk or dangerous destructive operation" 
 ```
 
 `strict` keeps only what the model is sure about. `loose` also pulls in the expired certificate and the suspicious-billing ticket.
+
+### Recursive search and file names only
+
+```sh
+$ ./semgrep -r -n -e "customer is asking for a refund" docs/
+docs/tickets/a.txt:7:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
+docs/tickets/sub/b.txt:1:The customer wants a refund for the broken lamp.
+
+$ ./semgrep -rl -e "customer is asking for a refund" docs/
+docs/tickets/a.txt
+docs/tickets/sub/b.txt
+```
+
+`-r` walks directories in sorted order and skips `.git`, `node_modules` and binary files (a NUL byte in the
+first 8 KB). Each line still costs API tokens, so point it at a directory you mean to scan. `-l` prints each
+matching file once, in the order matches are found, and works with or without `-r`.
 
 ### Everything that is *not* something
 
@@ -170,12 +186,15 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
                At the front it is a bare negation.  -v B            =  not B  (like grep -v)
   !MEANING     a leading ! negates just that meaning, in -e / -a / -v alike
                -e A -e '!B'  =  A or not B.   -a '!C' is the same as -v C
-  -l LEVEL     strictness preset, sets both thresholds (default normal)
+  --level LEVEL strictness preset, sets both thresholds (default normal)
                  loose  : -t 0.3 -T 0.7  catch more, accept some noise
                  normal : -t 0.5 -T 0.5
                  strict : -t 0.7 -T 0.3  only confident matches
-  -t THRESH    positive threshold: match when probability >= THRESH (overrides -l)
-  -T THRESH    negative threshold: "not X" when probability < THRESH (overrides -l)
+  -t THRESH    positive threshold: match when probability >= THRESH (overrides --level)
+  -T THRESH    negative threshold: "not X" when probability < THRESH (overrides --level)
+  -r           recurse into directories (current directory when FILE is omitted);
+               skips .git, node_modules and binary files
+  -l           print only the names of files with a match, not the lines
                with -t 0.6 -T 0.3 a line at 0.3..0.6 matches neither X nor not-X
   -c LINES     lines per request (default 30)
   -j N         concurrent requests (default 8)

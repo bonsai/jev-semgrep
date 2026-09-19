@@ -136,11 +136,11 @@ $ ./semgrep -n -e "about economy, finance or markets" -a "the news is negative o
 ### 厳しさのプリセット
 
 ```sh
-$ ./semgrep -l strict -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
+$ ./semgrep --level strict -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
 33:DROP TABLE sessions;
 49:API keys must never be committed to the repository.
 
-$ ./semgrep -l loose -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
+$ ./semgrep --level loose -n -e "a security risk or dangerous destructive operation" tests/corpus.txt
 11:2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
 16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
 33:DROP TABLE sessions;
@@ -148,6 +148,22 @@ $ ./semgrep -l loose -n -e "a security risk or dangerous destructive operation" 
 ```
 
 `strict` はモデルが確信している行だけ、`loose` は期限切れ証明書や身に覚えのない請求まで拾います。
+
+### ディレクトリを再帰検索、ファイル名だけ表示
+
+```sh
+$ ./semgrep -r -n -e "customer is asking for a refund" docs/
+docs/tickets/a.txt:7:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
+docs/tickets/sub/b.txt:1:The customer wants a refund for the broken lamp.
+
+$ ./semgrep -rl -e "customer is asking for a refund" docs/
+docs/tickets/a.txt
+docs/tickets/sub/b.txt
+```
+
+`-r` はディレクトリを名前順にたどり、`.git`、`node_modules`、バイナリ（先頭 8 KB に NUL がある）を飛ばします。
+行ごとに API トークンを消費するので、スキャンするつもりのディレクトリだけを指定してください。
+`-l` は一致したファイルを見つかった順に 1 回ずつ表示し、`-r` の有無にかかわらず使えます。
 
 ### 「〜でない」行を全部
 
@@ -168,12 +184,15 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
                先頭に置けば単独の否定。-v B は not B (grep -v 相当)
   !MEANING     -e / -a / -v のどこでも、先頭に ! を付けるとその意味だけ否定
                -e A -e '!B' は A or not B。-a '!C' は -v C と同じ
-  -l LEVEL     厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
+  --level LEVEL 厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
                  loose  : -t 0.3 -T 0.7  多少あやしくても拾う
                  normal : -t 0.5 -T 0.5
                  strict : -t 0.7 -T 0.3  確信のある行だけ拾う
-  -t THRESH    肯定条件の閾値。確率 >= THRESH で一致 (-l より優先)
-  -T THRESH    否定条件の閾値。確率 < THRESH で「〜でない」と判定 (-l より優先)
+  -t THRESH    肯定条件の閾値。確率 >= THRESH で一致 (--level より優先)
+  -T THRESH    否定条件の閾値。確率 < THRESH で「〜でない」と判定 (--level より優先)
+  -r           ディレクトリを再帰的に探す (FILE 省略時はカレント)。.git と node_modules、
+               バイナリファイルは飛ばす
+  -l           一致した行ではなくファイル名だけを表示
                -t 0.6 -T 0.3 なら 0.3〜0.6 の曖昧な行はどちらにも当たらない
   -c LINES     1 リクエストにまとめる行数 (既定 30)
   -j N         同時リクエスト数 (既定 8)

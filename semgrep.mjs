@@ -3,7 +3,8 @@
 //   semgrep -e "network failure" -a "already retried" -e "customer wants a refund" FILE...
 //   -e は OR で並び、-a / -v は直前の -e 項に AND / AND NOT で連結する。(A and B and not C) or D。
 //   意味の先頭に ! を付けるとその意味だけ否定できる。-e A -e '!B' は A or not B。
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 
@@ -18,7 +19,9 @@ const { values: opt, positionals: files, tokens } = parseArgs({
     e: { type: 'string', multiple: true },
     a: { type: 'string', multiple: true },
     v: { type: 'string', multiple: true },
-    l: { type: 'string', default: 'normal' }, // 厳しさのプリセット: loose / normal / strict
+    level: { type: 'string', default: 'normal' }, // 厳しさのプリセット: loose / normal / strict
+    r: { type: 'boolean', default: false }, // ディレクトリを再帰
+    l: { type: 'boolean', default: false }, // 一致したファイル名だけ
     t: { type: 'string' }, // 肯定の閾値: p >= t で一致 (既定はプリセット)
     T: { type: 'string' }, // 否定の閾値: p < T で「〜でない」と判定 (既定はプリセット)
     c: { type: 'string', default: '30' }, // 1リクエストあたりの行数
@@ -39,12 +42,15 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
                先頭に置けば単独の否定。-v B は not B (grep -v 相当)
   !MEANING     -e / -a / -v のどこでも、先頭に ! を付けるとその意味だけ否定
                -e A -e '!B' は A or not B。-a '!C' は -v C と同じ
-  -l LEVEL     厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
+  --level LEVEL 厳しさ。肯定と否定の閾値をまとめて決める (既定 normal)
                  loose  : -t 0.3 -T 0.7  多少あやしくても拾う
                  normal : -t 0.5 -T 0.5
                  strict : -t 0.7 -T 0.3  確信のある行だけ拾う
-  -t THRESH    肯定条件の閾値。確率 >= THRESH で一致 (-l より優先)
-  -T THRESH    否定条件の閾値。確率 < THRESH で「〜でない」と判定 (-l より優先)
+  -t THRESH    肯定条件の閾値。確率 >= THRESH で一致 (--level より優先)
+  -T THRESH    否定条件の閾値。確率 < THRESH で「〜でない」と判定 (--level より優先)
+  -r           ディレクトリを再帰的に探す (FILE 省略時はカレント)。.git と node_modules、
+               バイナリファイルは飛ばす
+  -l           一致した行ではなくファイル名だけを表示
                -t 0.6 -T 0.3 なら 0.3〜0.6 の曖昧な行はどちらにも当たらない
   -c LINES     1 リクエストにまとめる行数 (既定 30)
   -j N         同時リクエスト数 (既定 8)
@@ -93,15 +99,27 @@ for (const tk of tokens) {
 }
 if (!meanings.length) die('no -e MEANING given');
 const levels = { loose: [0.3, 0.7], normal: [0.5, 0.5], strict: [0.7, 0.3] };
-const level = levels[opt.l];
-if (!level) die(`-l must be one of ${Object.keys(levels).join(', ')}`);
+const level = levels[opt.level];
+if (!level) die(`--level must be one of ${Object.keys(levels).join(', ')}`);
 const tPos = opt.t === undefined ? level[0] : Number(opt.t);
 const tNeg = opt.T === undefined ? level[1] : Number(opt.T);
 const chunkLines = Number(opt.c);
 
+// -r ならディレクトリを展開する。.git / node_modules とバイナリ (先頭 8KB に NUL) は飛ばす。
+function expand(path) {
+  if (!statSync(path).isDirectory()) return [path];
+  if (!opt.r) die(`${path}: Is a directory (use -r)`);
+  return readdirSync(path, { withFileTypes: true })
+    .filter(d => !['.git', 'node_modules'].includes(d.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap(d => expand(join(path, d.name)));
+}
+const targets = (files.length ? files : [opt.r ? '.' : '-']).flatMap(f => (f === '-' ? [f] : expand(f)));
 const lines = []; // { file, no, text }
-for (const file of files.length ? files : ['-']) {
-  const src = readFileSync(file === '-' ? 0 : file, 'utf8').split('\n');
+for (const file of targets) {
+  const buf = readFileSync(file === '-' ? 0 : file);
+  if (buf.subarray(0, 8192).includes(0)) continue;
+  const src = buf.toString('utf8').split('\n');
   if (src.at(-1) === '') src.pop();
   src.forEach((text, i) => text.trim() && lines.push({ file, no: i + 1, text }));
 }
@@ -160,7 +178,8 @@ if (!['auto', 'always', 'never'].includes(opt.color)) die('--color must be auto,
 const paint = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
 const paintProb = x => paint(x >= tPos ? 32 : x < tNeg ? 31 : 33, x.toFixed(2));
 
-const multi = files.length > 1;
+const multi = targets.length > 1;
+const seen = new Set(); // -l で表示済みのファイル
 let matched = 0;
 for (const [ci, result] of results.entries()) {
   const probs = await result;
@@ -168,6 +187,10 @@ for (const [ci, result] of results.entries()) {
     const p = probs[i];
     if (!expr.some(term => term.every(([m, not]) => (not ? p[m] < tNeg : p[m] >= tPos)))) return;
     matched++;
+    if (opt.l) {
+      if (!seen.has(l.file)) { seen.add(l.file); console.log(paint(35, l.file)); }
+      return;
+    }
     const sep = paint(36, ':');
     const prefix = (multi ? paint(35, l.file) + sep : '') + (opt.n ? paint(32, l.no) + sep : '');
     const tail = opt.p ? `\t[${p.map(paintProb).join(' ')}]` : '';
