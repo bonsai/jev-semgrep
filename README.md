@@ -200,7 +200,7 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
   -j N         concurrent requests (default 8)
   -n           print line numbers
   -p           print each meaning's probability at the end of the line
-  --color=WHEN auto (default: color when stdout is a terminal) / always / never
+  --color[=WHEN] auto (default: color when stdout is a terminal) / always / never; bare --color means auto
                file and line number use grep's colors; with -p, probabilities are
                green at or above the positive threshold, red below the negative one,
                yellow in between. NO_COLOR is honored

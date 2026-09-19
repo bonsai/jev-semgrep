@@ -198,7 +198,7 @@ usage: semgrep [OPTION]... -e MEANING [-a MEANING] [-v MEANING]... [FILE...]
   -j N         同時リクエスト数 (既定 8)
   -n           行番号を付ける
   -p           各意味の確率を行末に表示 (閾値調整用)
-  --color=WHEN 色付け。auto (端末なら付ける、既定) / always / never
+  --color[=WHEN] 色付け。auto (端末なら付ける、既定) / always / never。=WHEN 省略時は auto
                ファイル名・行番号は grep と同じ配色。-p の確率は閾値以上を緑、
                否定側の閾値未満を赤、あいだを黄で表示。NO_COLOR にも従う
   -h, --help   このヘルプ

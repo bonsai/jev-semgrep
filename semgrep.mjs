@@ -12,7 +12,10 @@ import { parseArgs } from 'node:util';
 const die = msg => { console.error(`semgrep: ${msg}\nTry 'semgrep --help' for more information.`); process.exit(2); };
 process.on('uncaughtException', e => die(e.message));
 
+// 裸の --color は --color=auto と同じ (grep と同様)。parseArgs は値なしを扱えないので先に補う。
+const argv = process.argv.slice(2).map(a => (a === '--color' ? '--color=auto' : a));
 const { values: opt, positionals: files, tokens } = parseArgs({
+  args: argv,
   allowPositionals: true,
   tokens: true,
   options: {
@@ -56,7 +59,7 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -j N         同時リクエスト数 (既定 8)
   -n           行番号を付ける
   -p           各意味の確率を行末に表示 (閾値調整用)
-  --color=WHEN 色付け。auto (端末なら付ける、既定) / always / never
+  --color[=WHEN] 色付け。auto (端末なら付ける、既定) / always / never。=WHEN 省略時は auto
                ファイル名・行番号は grep と同じ配色。-p の確率は閾値以上を緑、
                否定側の閾値未満を赤、あいだを黄で表示。NO_COLOR にも従う
   -h, --help   このヘルプ
