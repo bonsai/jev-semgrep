@@ -113,6 +113,9 @@ if (!level) die(`--level must be one of ${Object.keys(levels).join(', ')}`);
 const tPos = opt.t === undefined ? level[0] : Number(opt.t);
 const tNeg = opt.T === undefined ? level[1] : Number(opt.T);
 const chunkLines = Number(opt.c);
+// 数値オプションの検証。-C=10 のような書き方は parseArgs が "=10" を値にするので、ここで弾く
+for (const [k, label] of [['t', '-t'], ['T', '-T'], ['c', '-c'], ['j', '-j'], ['A', '-A'], ['B', '-B'], ['C', '-C']])
+  if (opt[k] !== undefined && !/^\d+(\.\d+)?$/.test(opt[k])) die(`${label}: invalid number '${opt[k]}' (write ${label} 10 or ${label}10, not ${label}=10)`);
 
 // -r ならディレクトリを展開する。.git / node_modules とバイナリ (先頭 8KB に NUL) は飛ばす。
 function expand(path) {
