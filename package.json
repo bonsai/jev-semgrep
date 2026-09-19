@@ -2,13 +2,35 @@
   "name": "@uehaj/semgrep",
   "version": "0.1.0",
   "description": "grep by meaning, across languages. TypeSafe Jev scores every line against a meaning; combine meanings with AND/OR/NOT.",
-  "keywords": ["grep", "semantic", "search", "typesafe", "jev", "cli", "japanese"],
+  "keywords": [
+    "grep",
+    "semantic",
+    "search",
+    "typesafe",
+    "jev",
+    "cli",
+    "japanese"
+  ],
   "license": "MIT",
   "author": "Junji UEHARA",
-  "repository": "github:uehaj/jev-semgrep",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uehaj/jev-semgrep.git"
+  },
   "type": "module",
-  "bin": { "semgrep": "semgrep.mjs" },
-  "files": ["semgrep.mjs", "README.md", "README.ja.md"],
-  "engines": { "node": ">=20.12" },
-  "scripts": { "test": "sh tests/check.sh", "judge": "node --no-warnings tests/judge.mts" }
+  "bin": {
+    "semgrep": "semgrep.mjs"
+  },
+  "files": [
+    "semgrep.mjs",
+    "README.md",
+    "README.ja.md"
+  ],
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "test": "sh tests/check.sh",
+    "judge": "node --no-warnings tests/judge.mts"
+  }
 }
