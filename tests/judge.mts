@@ -52,8 +52,9 @@ Answer with ONLY a JSON object mapping "M0", "M1", ... to arrays of line numbers
 }
 
 // semgrep を閾値ゼロで走らせて全行の確率を取る。以降の閾値評価は API を叩かない。
-function probabilities(c: { args: string[] }): Map<number, number[]> {
-  const out = execFileSync('node', [`${dir}../semgrep.mjs`, '-n', '-p', '-t', '0', '-T', '1.01', ...c.args, `${dir}corpus.txt`],
+function probabilities(meanings: string[]): Map<number, number[]> {
+  // 各意味を肯定の -e で並べ -t 0 にすれば全行が出力され、-p で意味ごとの確率が取れる
+  const out = execFileSync('node', [`${dir}../semgrep.mjs`, '-n', '-p', '-t', '0', ...meanings.flatMap(m => ['-e', m]), `${dir}corpus.txt`],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   return new Map(out.split('\n').filter(Boolean).map(l => {
     const [, no, probs] = l.match(/^(\d+):.*\t\[(.*)\]$/)!;
@@ -68,7 +69,7 @@ const prepared: Prepared[] = cases.map(c => {
   const verdict = Object.fromEntries(meanings.map(m => [m, new Set(cache[m])]));
   const expected = new Set(corpus.map((_, i) => i + 1)
     .filter(n => expr.some(term => term.every(([m, not]) => verdict[m].has(n) !== not))));
-  return { c, expr, meanings, probs: probabilities(c), expected };
+  return { c, expr, meanings, probs: probabilities(meanings), expected };
 });
 
 function matches(x: Prepared, n: number, tPos: number, tNeg: number) {

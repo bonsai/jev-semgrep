@@ -1,6 +1,6 @@
 {
   "name": "@uehaj/semgrep",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "grep by meaning, across languages. TypeSafe Jev scores every line against a meaning; combine meanings with AND/OR/NOT.",
   "keywords": [
     "grep",
@@ -24,7 +24,8 @@
   "files": [
     "semgrep.mjs",
     "README.md",
-    "README.ja.md"
+    "README.ja.md",
+    "docs/"
   ],
   "engines": {
     "node": ">=20.12"

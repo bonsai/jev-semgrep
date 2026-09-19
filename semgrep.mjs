@@ -55,8 +55,9 @@ grep by meaning, powered by Jev (TypeSafe System One). Reads stdin when FILE is 
   -t THRESH    positive threshold: match when probability >= THRESH (overrides --level)
   -T THRESH    negative threshold: "not X" when probability < THRESH (overrides --level)
                with -t 0.6 -T 0.3 a line at 0.3..0.6 matches neither X nor not-X
-  -r           recurse into directories (current directory when FILE is omitted);
-               skips .git, node_modules and binary files
+  -r           recurse into directories (current directory when FILE is omitted). Skips .git,
+               node_modules, .ssh/.aws/.gnupg, binary files and likely secrets (.env*, *.pem, *.key,
+               id_rsa...). Every searched line is sent to the TypeSafe API
   -l           print only the names of files with a match, not the lines
   -A NUM       print NUM lines of trailing context after each match (context lines use - as separator)
   -B NUM       print NUM lines of leading context before each match
@@ -97,8 +98,9 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
   -t THRESH    肯定条件の閾値。確率 >= THRESH で一致 (--level より優先)
   -T THRESH    否定条件の閾値。確率 < THRESH で「〜でない」と判定 (--level より優先)
                -t 0.6 -T 0.3 なら 0.3〜0.6 の曖昧な行はどちらにも当たらない
-  -r           ディレクトリを再帰的に探す (FILE 省略時はカレント)。.git と node_modules、
-               バイナリファイルは飛ばす
+  -r           ディレクトリを再帰的に探す (FILE 省略時はカレント)。.git、node_modules、
+               .ssh/.aws/.gnupg、バイナリ、秘密情報らしいファイル (.env*, *.pem, *.key, id_rsa...) は
+               飛ばす。検索した行はすべて TypeSafe の API に送られる
   -l           一致した行ではなくファイル名だけを表示
   -A NUM       一致行の後ろ NUM 行も表示 (grep と同じ。文脈行の区切りは - )
   -B NUM       一致行の前 NUM 行も表示
@@ -113,7 +115,7 @@ jev (TypeSafe System One) で意味的にマッチする行を探す grep。FILE
                否定側の閾値未満を赤、あいだを黄で表示。NO_COLOR にも従う
   -h, --help   このヘルプ (LANG / LC_ALL / LC_MESSAGES が ja 以外なら英語)
 
-終了コード: 一致あり 0 / なし 1 / 引数エラー 2
+終了コード: 一致あり 0 / なし 1 / エラー 2 (引数・読めないファイル・API 障害)
 
 API キーの設定 (TypeSafe / Jev):
   https://console.typesafe.ai/ でキーを取得し、次のいずれかで渡す。上から順に探す。
@@ -146,6 +148,7 @@ for (const tk of tokens) {
   if (tk.name === 'a' && expr.length === 0) die('-a needs a preceding -e');
   const not = tk.value.startsWith('!'); // 個別の否定: "!MEANING"
   const text = not ? tk.value.slice(1) : tk.value;
+  if (!text.trim()) die(`-${tk.name}: MEANING must not be empty`);
   let m = meanings.indexOf(text);
   if (m < 0) m = meanings.push(text) - 1;
   const lit = [m, not !== (tk.name === 'v')];
@@ -166,26 +169,36 @@ if (chunkLines < 1) die('--chunk must be at least 1');
 if (tPos < 0 || tPos > 1 || tNeg < 0 || tNeg > 1) die('-t / -T must be between 0 and 1');
 if (Number(opt.j) < 1) die('-j must be at least 1');
 
-// -r ならディレクトリを展開する。.git / node_modules とバイナリ (先頭 8KB に NUL) は飛ばす。
+// -r ならディレクトリを展開する。行の内容は外部 API に送られるので、.git / node_modules と
+// 秘密情報になりがちなもの (.env*, 鍵, .ssh/.aws/.gnupg) は再帰では飛ばす。明示的にファイルを渡せば送る。
+const SKIP_DIRS = ['.git', 'node_modules', '.ssh', '.aws', '.gnupg'];
+const SKIP_FILE = /^\.env(\..*)?$|\.(pem|key|p12|pfx)$|^id_(rsa|dsa|ecdsa|ed25519)(\.pub)?$/;
+let hadError = false;
+const warn = (file, e) => { console.error(`semgrep: ${file}: ${e.message}`); hadError = true; };
 function expand(path) {
-  if (!statSync(path).isDirectory()) return [path];
+  let st;
+  try { st = statSync(path); } catch (e) { warn(path, e); return []; }
+  if (!st.isDirectory()) return [path];
   if (!opt.r) die(`${path}: Is a directory (use -r)`);
   return readdirSync(path, { withFileTypes: true })
-    .filter(d => !['.git', 'node_modules'].includes(d.name) && !d.isSymbolicLink()) // リンク循環を避ける
+    .filter(d => !d.isSymbolicLink() && !(d.isDirectory() ? SKIP_DIRS.includes(d.name) : SKIP_FILE.test(d.name)))
     .sort((a, b) => a.name.localeCompare(b.name))
     .flatMap(d => expand(path.endsWith('/') ? path + d.name : `${path}/${d.name}`)); // join() は ./ を落とすので使わない
 }
 const targets = (files.length ? files : [opt.r ? '.' : '-']).flatMap(f => (f === '-' ? [f] : expand(f)));
 const sources = new Map(); // file -> 全行 (文脈表示用。空行も含む)
-const lines = []; // { file, no, text }  空行は API に送らない
+const allLines = []; // { file, no, text }  空行も含む。式の評価対象
 for (const file of targets) {
-  const buf = readFileSync(file === '-' ? 0 : file);
+  let buf;
+  try { buf = readFileSync(file === '-' ? 0 : file); } catch (e) { warn(file, e); continue; }
   if (buf.subarray(0, 8192).includes(0)) continue;
   const src = buf.toString('utf8').split('\n');
   if (src.at(-1) === '') src.pop();
   sources.set(file, src);
-  src.forEach((text, i) => text.trim() && lines.push({ file, no: i + 1, text }));
+  src.forEach((text, i) => allLines.push({ file, no: i + 1, text }));
 }
+// 空行・空白だけの行は API に送らず、全意味の確率 0 として扱う (-e には当たらず -v には当たる)
+const lines = allLines.filter(l => l.text.trim());
 
 // 行数と文字数の両方で区切る。state+最長質問は 32k トークンが上限。
 const chunks = [];
@@ -249,27 +262,31 @@ const paint = (code, s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s);
 const paintProb = x => paint(x >= tPos ? 32 : x < tNeg ? 31 : 33, x.toFixed(2));
 
 // 一致行を file -> (行番号 -> 確率) に集めてから、ファイル順・行順に文脈つきで出力する。
-const hits = new Map();
-let matched = 0;
+const probOf = new Map(); // 行オブジェクト -> 意味ごとの確率
 for (const [ci, result] of results.entries()) {
   const probs = await result;
-  chunks[ci].forEach((l, i) => {
-    const p = probs[i];
-    if (!expr.some(term => term.every(([m, not]) => (not ? p[m] < tNeg : p[m] >= tPos)))) return;
-    matched++;
-    if (!hits.has(l.file)) hits.set(l.file, new Map());
-    hits.get(l.file).set(l.no, p);
-  });
+  chunks[ci].forEach((l, i) => probOf.set(l, probs[i]));
+}
+const zeros = meanings.map(() => 0);
+const hits = new Map();
+let matched = 0;
+for (const l of allLines) {
+  const p = probOf.get(l) ?? zeros;
+  if (!expr.some(term => term.every(([m, not]) => (not ? p[m] < tNeg : p[m] >= tPos)))) continue;
+  matched++;
+  if (!hits.has(l.file)) hits.set(l.file, new Map());
+  hits.get(l.file).set(l.no, p);
 }
 
 const after = Number(opt.A ?? opt.C ?? 0), before = Number(opt.B ?? opt.C ?? 0);
-const multi = targets.length > 1;
+const multi = opt.r || targets.length > 1; // grep -r はファイルが 1 つでも名前を付ける
 let lastPrinted = null; // [file, 行番号]。文脈グループの切れ目に -- を出すため
 for (const file of targets) {
+  if (!sources.has(file)) continue;
   const h = hits.get(file);
+  if (opt.c) { console.log((multi ? paint(35, file) + paint(36, ':') : '') + (h?.size ?? 0)); continue; }
   if (!h) continue;
   if (opt.l) { console.log(paint(35, file)); continue; }
-  if (opt.c) { console.log((multi ? paint(35, file) + paint(36, ':') : '') + h.size); continue; }
   const src = sources.get(file);
   let last = 0; // このファイルで出力済みの最終行番号
   for (const no of [...h.keys()].sort((a, b) => a - b)) {
@@ -286,6 +303,7 @@ for (const file of targets) {
     lastPrinted = [file, to];
   }
 }
-console.error(`${matched}/${lines.length} lines, ${chunks.length} requests, ${usedTokens} input tokens`);
+// 集計は対話時だけ。grep はスクリプトから使われたとき stderr に何も出さない
+if (process.stderr.isTTY) console.error(`${matched}/${allLines.length} lines (${lines.length} sent), ${chunks.length} requests, ${usedTokens} input tokens`);
 // process.exit() だとパイプ先への stdout が書き切られる前に落ちて出力が欠けるので exitCode で終える
-process.exitCode = matched ? 0 : 1;
+process.exitCode = hadError ? 2 : matched ? 0 : 1;
