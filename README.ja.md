@@ -14,7 +14,35 @@ Jev は文章を生成せず、typed な質問に確率だけを返すモデル�
 - 依存ゼロ。Node.js 23.6 以降（`.mts` の型剥がし）と `fetch` だけで動きます。
 - 速い。30 行を 1 リクエストにまとめ、8 本並列で投げます。210 行のファイルが 1 秒弱で終わります。
 - 意味は AND / OR / NOT で自由に組み合わせられます。
-- 言語をまたげます。日本語の意味で英語の行を探す、その逆も可能です。
+- **言語をまたげる。** 日本語で書いた意味で英語の行が、英語で書いた意味で日本語の行が見つかります。翻訳は挟まず、速度も費用も同じです。
+
+## 言語をまたいで探せる
+
+意味と本文の言語が違っていても構いません。Jev は語ではなく概念を照合するので、
+1 つの問い合わせでファイル中のあらゆる言語の行が対象になります。
+
+**英語**の意味で**日本語**の行が見つかります。どの行にも angry / frustrated の語はなく、うち 2 行は日本語です。
+
+```sh
+$ ./semgrep -n -e "customer is angry or frustrated" tests/corpus.txt
+14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
+16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
+18:I want my money back. The item arrived broken and customer service ignored me.
+21:Your product ruined my weekend. Never buying from you again.
+23:This is the third time I'm writing. Nobody has replied to my previous emails.
+```
+
+**日本語**の意味で**英語**の行が、日本語の行と同じ確信度で見つかります。
+
+```sh
+$ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
+14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた	[0.97]
+18:I want my money back. The item arrived broken and customer service ignored me.	[0.95]
+```
+
+日英が混ざったログや問い合わせのダンプ、メンバーごとに問い合わせの言語が違うチームで効きます。
+注意点が 1 つあります。TypeSafe は英語の精度が最も高いと明記しており、手元の実測でも日本語の意味は
+閾値付近でややぶれます。際どい問い合わせは英語で書く方が安定します。
 
 ## セットアップ
 

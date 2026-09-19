@@ -15,7 +15,36 @@ and applies a threshold.
 - Zero dependencies. Node.js 23.6+ (native type stripping) and `fetch`.
 - Fast. 30 lines go into one request, requests run 8 at a time. A 210-line file finishes in under a second.
 - Meanings combine with AND / OR / NOT.
-- Cross-lingual. A Japanese meaning finds English lines and vice versa.
+- **Cross-lingual.** Write the meaning in Japanese and find English lines, or the other way round. No translation step, same speed, same cost.
+
+## Search across languages
+
+The meaning and the text do not have to share a language. Jev compares concepts, not words,
+so one query finds matching lines in every language the file contains.
+
+An **English** meaning finds **Japanese** lines. None of the hits contain "angry" or "frustrated", and two of them are in Japanese:
+
+```sh
+$ ./semgrep -n -e "customer is angry or frustrated" tests/corpus.txt
+14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
+16:ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
+18:I want my money back. The item arrived broken and customer service ignored me.
+21:Your product ruined my weekend. Never buying from you again.
+23:This is the third time I'm writing. Nobody has replied to my previous emails.
+```
+
+A **Japanese** meaning finds **English** lines, with the same confidence as the Japanese ones:
+
+```sh
+$ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
+14:ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた	[0.97]
+18:I want my money back. The item arrived broken and customer service ignored me.	[0.95]
+```
+
+This makes semgrep useful for mixed-language logs and ticket dumps, and for teams whose members
+query in different languages. One caveat: TypeSafe documents English as the most accurate language,
+and in our tests Japanese meanings wobble a little more near the threshold. When a query is borderline,
+phrasing the meaning in English is the safer choice.
 
 ## Setup
 
