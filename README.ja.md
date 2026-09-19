@@ -44,6 +44,50 @@ $ ./semgrep -n -p -e "返金の要求" tests/corpus.txt
 注意点が 1 つあります。TypeSafe は英語の精度が最も高いと明記しており、手元の実測でも日本語の意味は
 閾値付近でややぶれます。際どい問い合わせは英語で書く方が安定します。
 
+## ベクトル検索と何が違うのか
+
+「X に関係のある行」が欲しいだけなら、埋め込みのコサイン類似度でも同じ行が出ます。違うのは判定の中身です。
+semgrep は話題の近さではなく、その行について **命題が成り立つか** を判定します。Jev は行と質問を同時に読んで
+答える（cross-encoder 型の）モデルなので、誰が何をしたか、否定、「求めている」のか「済んだ」のかで答えが変わります。
+行の埋め込みは質問を見る前に固定されるので、測れるのは話題の近さまでです。
+
+次の 6 行はどれも「返金の話」ですが、顧客が返金を求めているのは 2 行だけです。
+
+```sh
+$ ./semgrep -n -p -t 0 -e "customer is asking for a refund" tests/contrast.txt
+1:返金してほしい。商品が壊れていた	[0.98]
+2:返金処理が完了しましたのでご確認ください	[0.10]
+3:当社の返金ポリシーは購入後30日以内です	[0.10]
+4:The manager denied the refund request yesterday	[0.17]
+5:I demand a full refund immediately	[0.94]
+6:Refunds are processed within 5 business days	[0.08]
+```
+
+意味ごとに独立した確率が出るので、**論理的な AND と NOT がそのままブール演算になります**。
+集合の引き算や「否定クエリ」の工夫は要りません。
+
+```sh
+# 返金の話だが、顧客が求めているのではない → 完了報告、ポリシー、却下、日数
+$ ./semgrep -n -e "about a refund" -v "the customer is asking for a refund" tests/contrast.txt
+2:返金処理が完了しましたのでご確認ください
+3:当社の返金ポリシーは購入後30日以内です
+4:The manager denied the refund request yesterday
+6:Refunds are processed within 5 business days
+
+# 怒っている、かつ、それが顧客であってスタッフではない
+$ ./semgrep -n -e "someone is angry" -a "the customer, not the staff, is the one acting" tests/contrast.txt
+5:I demand a full refund immediately
+8:顧客が怒って電話を切った
+```
+
+7 行目の `カスタマーサポート担当者が怒って電話を切った` は、2 つ目の意味で 0.05 となり除外されます。
+7 行目と 8 行目のコサイン類似度はほぼ 1 です。
+
+実用上の帰結が 2 つあります。確率は較正されているので閾値 0.5 がどの質問にも使えます。コサイン類似度は
+top-k か質問ごとの閾値調整が要ります。また索引を作らず、目の前のファイルにそのまま当てられます。
+裏返すと、問い合わせのたびにコーパス全体分を払うので、同じ大きなコーパスに何度も問い合わせるなら
+ベクトル索引の方が安くて速いです。
+
 ## インストール
 
 Node.js 20.12 以降が必要です。ほかの依存はありません。

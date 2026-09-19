@@ -46,6 +46,51 @@ query in different languages. One caveat: TypeSafe documents English as the most
 and in our tests Japanese meanings wobble a little more near the threshold. When a query is borderline,
 phrasing the meaning in English is the safer choice.
 
+## How this differs from vector search
+
+If all you want is "lines about X", embedding similarity gives you the same lines. semgrep differs in
+*what* it judges: not how close a line is to a topic, but whether a **proposition** holds for that line.
+Jev reads the line and the question together (a cross-encoder shape), so who did what, negation, and
+"asked for" versus "already done" all change the answer. An embedding of the line is fixed before it
+ever sees your query, so it can only measure topical closeness.
+
+All six lines below are "about a refund". Only two are a customer asking for one:
+
+```sh
+$ ./semgrep -n -p -t 0 -e "customer is asking for a refund" tests/contrast.txt
+1:返金してほしい。商品が壊れていた	[0.98]
+2:返金処理が完了しましたのでご確認ください	[0.10]
+3:当社の返金ポリシーは購入後30日以内です	[0.10]
+4:The manager denied the refund request yesterday	[0.17]
+5:I demand a full refund immediately	[0.94]
+6:Refunds are processed within 5 business days	[0.08]
+```
+
+Because each meaning yields an independent probability, **logical AND and NOT are plain boolean
+operations**, not a trick with set differences or "negative queries":
+
+```sh
+# about a refund, but NOT a customer asking for one → completed, policy, denied, timelines
+$ ./semgrep -n -e "about a refund" -v "the customer is asking for a refund" tests/contrast.txt
+2:返金処理が完了しましたのでご確認ください
+3:当社の返金ポリシーは購入後30日以内です
+4:The manager denied the refund request yesterday
+6:Refunds are processed within 5 business days
+
+# angry AND it is the customer, not the staff
+$ ./semgrep -n -e "someone is angry" -a "the customer, not the staff, is the one acting" tests/contrast.txt
+5:I demand a full refund immediately
+8:顧客が怒って電話を切った
+```
+
+Line 7, `カスタマーサポート担当者が怒って電話を切った` (the *support agent* hung up angrily), scores 0.05
+on the second meaning and is excluded. Cosine similarity between lines 7 and 8 is close to 1.
+
+Two more practical consequences. The probabilities are calibrated, so one threshold (0.5) works across
+queries, where cosine scores need top-k or per-query tuning. And there is no index to build: semgrep reads
+the files in front of you. The flip side is that every query pays for the whole corpus again, so for
+repeated queries over a large, fixed corpus a vector index is cheaper and faster.
+
 ## Install
 
 Requires Node.js 20.12 or later. No other dependencies.
