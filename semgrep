@@ -1,0 +1,4 @@
+#!/bin/sh
+# TYPESAFE_API_KEY を .env（既定: 同ディレクトリ、SEMGREP_ENV で変更可）から読んで semgrep.mts を実行する
+d=$(cd "$(dirname "$0")" && pwd)
+exec node --no-warnings --env-file-if-exists="${SEMGREP_ENV:-$d/.env}" "$d/semgrep.mts" "$@"

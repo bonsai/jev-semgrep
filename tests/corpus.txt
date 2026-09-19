@@ -1,0 +1,51 @@
+2026-09-19 08:00:01 INFO  server started on port 8080
+2026-09-19 08:00:02 INFO  connected to database primary
+2026-09-19 08:01:15 WARN  slow query took 3200ms: SELECT * FROM orders
+2026-09-19 08:02:30 ERROR connection reset by peer while calling payment-gateway
+2026-09-19 08:02:31 INFO  retrying payment-gateway request (attempt 2/3)
+2026-09-19 08:02:35 ERROR timeout after 5000ms waiting for payment-gateway
+2026-09-19 08:05:00 INFO  scheduled backup completed successfully
+2026-09-19 08:06:12 WARN  disk usage at 91% on /var/lib/postgresql
+2026-09-19 08:10:44 ERROR DNS lookup failed for api.example.com
+2026-09-19 08:10:45 INFO  DNS lookup succeeded on retry
+2026-09-19 09:00:00 ERROR SSL handshake failed: certificate expired
+2026-09-19 09:30:00 FATAL out of memory: killed process 4412 (java)
+network unreachable: no route to host 10.0.0.5
+ユーザー山田さんからの問い合わせ: 返金してほしい、商品が壊れていた
+ユーザー鈴木さんからの問い合わせ: 商品はとても気に入りました、ありがとう
+ユーザー佐藤さんからの問い合わせ: 注文した覚えのない請求が来ています。至急確認してください
+ユーザー高橋さんからの問い合わせ: 配送先の住所を変更したいのですが
+I want my money back. The item arrived broken and customer service ignored me.
+Please reset my password, I cannot log in to my account.
+Thanks for the great support, issue resolved.
+Your product ruined my weekend. Never buying from you again.
+Can I change the delivery address for order #8821?
+This is the third time I'm writing. Nobody has replied to my previous emails.
+def parse_config(path):
+    with open(path) as f:
+        return json.load(f)
+# TODO: handle missing file gracefully
+import socket
+socket.setdefaulttimeout(3.0)
+except ConnectionError as e:
+    logger.error("upstream unreachable: %s", e)
+SELECT id, email FROM users WHERE deleted_at IS NULL;
+DROP TABLE sessions;
+会議は明日の10時からに変更になりました
+サーバーのメモリが不足していてOOM killerがプロセスを落としました
+今日の天気は晴れ、最高気温は28度です
+料金プランの変更方法を教えてください
+本日のランチはカレーにしました
+来週の金曜日は祝日なので休業します
+新機能のリリースは来月に延期されました
+The quick brown fox jumps over the lazy dog.
+Congratulations on the launch!
+Stock prices fell 3% after the earnings report missed expectations.
+The central bank raised interest rates by 25 basis points.
+Scientists discovered a new species of deep-sea fish near Japan.
+Remember to submit your timesheet by Friday.
+ぼくのなつやすみは楽しかったです
+明日は雨の予報なので傘を持っていきます
+API keys must never be committed to the repository.
+The deploy to production failed because the health check timed out.
+Rolled back release 2.4.1 after error rate spiked to 12%.

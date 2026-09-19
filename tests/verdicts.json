@@ -1,0 +1,158 @@
+{
+ "ネットワークやリモート接続の障害": [
+  4,
+  6,
+  9,
+  11,
+  13,
+  31
+ ],
+ "the writer expresses gratitude or satisfaction": [
+  15,
+  20,
+  42
+ ],
+ "customer is angry or frustrated": [
+  14,
+  16,
+  18,
+  21,
+  23
+ ],
+ "customer is asking for a refund": [
+  14,
+  18
+ ],
+ "customer wants to change a delivery address": [
+  17,
+  22
+ ],
+ "a retry is happening or was attempted": [
+  5,
+  10
+ ],
+ "a server log line reporting an error or fatal condition": [
+  4,
+  6,
+  9,
+  11,
+  12,
+  31,
+  35,
+  50,
+  51
+ ],
+ "the problem is about network connectivity": [
+  4,
+  6,
+  9,
+  10,
+  11,
+  13,
+  28,
+  29,
+  30,
+  31
+ ],
+ "source code or SQL": [
+  24,
+  25,
+  26,
+  27,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33
+ ],
+ "written in English": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25,
+  26,
+  27,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33,
+  41,
+  42,
+  43,
+  44,
+  45,
+  46,
+  49,
+  50,
+  51
+ ],
+ "a timestamped server log line": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12
+ ],
+ "about economy, finance or markets": [
+  43,
+  44,
+  37
+ ],
+ "the news is negative or a decline": [
+  3,
+  4,
+  6,
+  8,
+  9,
+  11,
+  12,
+  13,
+  14,
+  16,
+  18,
+  21,
+  23,
+  31,
+  33,
+  40,
+  43,
+  50,
+  51
+ ],
+ "about weather": [
+  36,
+  48
+ ],
+ "a security risk or dangerous destructive operation": [
+  11,
+  33,
+  49
+ ]
+}

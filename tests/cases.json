@@ -1,0 +1,12 @@
+[
+  { "name": "single/ja-meaning", "args": ["-e", "ネットワークやリモート接続の障害"] },
+  { "name": "single/abstract", "args": ["-e", "the writer expresses gratitude or satisfaction"] },
+  { "name": "single/angry-customer", "args": ["-e", "customer is angry or frustrated"] },
+  { "name": "or/refund-or-address", "args": ["-e", "customer is asking for a refund", "-e", "customer wants to change a delivery address"] },
+  { "name": "and/net-and-retry", "args": ["-e", "ネットワークやリモート接続の障害", "-a", "a retry is happening or was attempted"] },
+  { "name": "andnot/error-not-network", "args": ["-e", "a server log line reporting an error or fatal condition", "-v", "the problem is about network connectivity"] },
+  { "name": "ornot/code-or-not-english", "args": ["-e", "source code or SQL", "-e", "!written in English"] },
+  { "name": "not/only-non-log", "args": ["-v", "a timestamped server log line"] },
+  { "name": "mixed/(finance and negative) or weather", "args": ["-e", "about economy, finance or markets", "-a", "the news is negative or a decline", "-e", "about weather"] },
+  { "name": "single/security-risk", "args": ["-e", "a security risk or dangerous destructive operation"] }
+]

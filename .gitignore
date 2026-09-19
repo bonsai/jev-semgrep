@@ -1,0 +1,4 @@
+.env
+.env.*
+workdir/
+node_modules/
