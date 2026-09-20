@@ -2,6 +2,8 @@
 
 [English version](README.md)
 
+背景と設計の解説: [Jevのキラーアプリ、「意味で探す grep」を作った（Zenn）](https://zenn.dev/uehaj/articles/jev-semgrep-grep-by-meaning)
+
 正規表現ではなく **意味** で行を探す grep です。
 判定には [TypeSafe AI](https://typesafe.ai/) の System One モデル **Jev** を使います。
 Jev は文章を生成せず、typed な質問に確率だけを返すモデルなので、1 行ごとに

@@ -2,6 +2,8 @@
 
 [日本語版はこちら](README.ja.md)
 
+Background and design notes (Japanese): [Jevのキラーアプリ、「意味で探す grep」を作った](https://zenn.dev/uehaj/articles/jev-semgrep-grep-by-meaning) on Zenn.
+
 A grep that finds lines by **what they mean**, not by regular expressions.
 Matching is done by **Jev**, the System One model from [TypeSafe AI](https://typesafe.ai/).
 Jev does not generate text. It answers typed questions with probabilities, so for every line
