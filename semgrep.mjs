@@ -132,13 +132,19 @@ if (opt.help) {
 }
 
 // API key: if not in the environment, look for a .env file in order
-if (!process.env.TYPESAFE_API_KEY) {
+const keyFrom = () => (process.env.OPENROUTER_API_KEY || '').trim() || (process.env.TYPESAFE_API_KEY || '').trim();
+if (!keyFrom()) {
+  delete process.env.OPENROUTER_API_KEY; // an inherited-but-empty var would block loadEnvFile
+  delete process.env.TYPESAFE_API_KEY;
   const candidates = [process.env.SEMGREP_ENV, '.env', `${homedir()}/.config/semgrep/.env`];
   const found = candidates.find(f => f && existsSync(f));
   if (found) process.loadEnvFile(found);
 }
-const apiKey = process.env.TYPESAFE_API_KEY;
-if (!apiKey) die('TYPESAFE_API_KEY is not set. Put it in ./.env or ~/.config/semgrep/.env');
+const apiKey = keyFrom();
+if (!apiKey) die('No API key found. Set OPENROUTER_API_KEY (or TYPESAFE_API_KEY) in the environment or in ./.env / ~/.config/semgrep/.env');
+const viaOpenRouter = Boolean(process.env.OPENROUTER_API_KEY) || apiKey.startsWith('sk-or-v1');
+const apiBase = process.env.SEMGREP_API_BASE ?? (viaOpenRouter ? 'https://openrouter.ai/api/alpha/decisions' : 'https://api.typesafe.ai/v1/systemone');
+const apiModel = process.env.SEMGREP_MODEL ?? (viaOpenRouter ? '~typesafe/jev-latest' : 'jev-latest');
 
 // Expression: a list of AND terms joined by OR. Each literal is [meaning index, negated]. meanings holds each distinct meaning once.
 const expr = [];
@@ -225,23 +231,25 @@ async function evaluate(chunk) {
   for (let attempt = 0; ; attempt++) {
     let res;
     try {
-      res = await fetch('https://api.typesafe.ai/v1/systemone', {
+      res = await fetch(apiBase, {
         method: 'POST',
-        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ model: 'jev-latest', state, questions }),
+        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json', ...(viaOpenRouter ? { 'http-referer': 'https://github.com/uehaj/jev-semgrep', 'x-title': 'jev-semgrep' } : {}) },
+        body: JSON.stringify({ model: apiModel, state, questions }),
         signal: AbortSignal.timeout(60_000),
       });
     } catch (e) {
       if (attempt < 6) { await sleep(500 * 2 ** attempt); continue; } // retry on connection errors and timeouts too
-      throw new Error(`typesafe: ${e.cause?.message ?? e.message}`);
+      throw new Error(`${apiBase}: ${e.cause?.message ?? e.message}`);
     }
     if ((res.status === 429 || res.status === 529 || res.status >= 500) && attempt < 6) {
       await sleep(500 * 2 ** attempt);
       continue;
     }
-    if (!res.ok) throw new Error(`typesafe ${res.status}: ${await res.text()}`);
-    const { answers, usage } = await res.json();
-    usedTokens += usage.input_tokens;
+    if (!res.ok) throw new Error(`${apiBase} ${res.status}: ${await res.text()}`);
+    const raw = await res.json();
+    const body = raw.data ?? raw; // tolerate a { data: ... } wrapper (OpenRouter)
+    const { answers, usage } = body;
+    usedTokens += usage.input_tokens ?? 0;
     return chunk.map((_, i) => meanings.map((_, m) => answers[`${id(i)}_${m}`].noul));
   }
 }
